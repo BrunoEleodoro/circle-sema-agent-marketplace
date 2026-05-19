@@ -2,7 +2,7 @@
 
 Shared, framework-agnostic TypeScript wrappers around the [Circle CLI](https://developers.circle.com/agent-stack/circle-cli/command-reference). Each kit imports from this package and adapts the tools to its framework's tool/agent interface.
 
-Wrapped commands (see master brief):
+Wrapped commands:
 
 - `circle wallet create`
 - `circle wallet list --chain BASE --type agent --output json`

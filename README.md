@@ -42,10 +42,9 @@ circle-agent-stack-examples/
 
 ```bash
 bun install
-cp .env.example .env   # fill in your credentials
 ```
 
-This installs all workspace dependencies from the repo root. Each kit exposes a `bun run demo` (or `npm run demo`) entrypoint. See its README for details.
+This installs all workspace dependencies from the repo root. Each kit owns its own `.env.example` (copy to `.env` inside that kit's folder) and exposes a `bun run demo` (or `npm run demo`) entrypoint. See its README for details.
 
 ## Demo use case
 
