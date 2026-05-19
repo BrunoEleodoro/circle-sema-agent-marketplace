@@ -1,0 +1,25 @@
+{
+  "name": "@circle-agent-stack-examples/kit-langchain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Autonomous Payment Agent example using LangChain Deep Agents + Circle Agent Stack.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "demo": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@circle-agent-stack-examples/circle-tools": "workspace:*",
+    "deepagents": "^1.10.2",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}

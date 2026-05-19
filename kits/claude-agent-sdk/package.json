@@ -1,0 +1,25 @@
+{
+  "name": "@circle-agent-stack-examples/kit-claude-agent-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Autonomous Payment Agent example using the Claude Agent SDK + Circle Agent Stack.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "demo": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.144",
+    "@circle-agent-stack-examples/circle-tools": "workspace:*",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
