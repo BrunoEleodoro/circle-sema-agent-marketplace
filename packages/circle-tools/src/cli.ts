@@ -27,7 +27,11 @@ export class CircleCliError extends Error {
 /**
  * Invoke the Circle CLI synchronously with the given args and return stdout.
  * Wraps `child_process.execFileSync` against the globally installed `circle` binary
- * (`npm install -g @circle-fin/cli`).
+ * (`bun add -g @circle-fin/cli`).
+ *
+ * Uses `execFileSync` rather than `execSync`: arguments like service URLs,
+ * keywords, and JSON payloads pass through verbatim with no shell parsing,
+ * preventing shell metacharacters in untrusted input from being interpreted.
  */
 export function runCircle(args: readonly string[], options: CliOptions = {}): string {
   const finalArgs =

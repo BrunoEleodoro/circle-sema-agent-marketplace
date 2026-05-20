@@ -7,7 +7,8 @@ An Autonomous Payment Agent built with the [Claude Agent SDK](https://code.claud
 ## Prerequisites
 
 - Node.js 20+
-- Circle CLI: `npm install -g @circle-fin/cli`
+- Circle CLI: `bun add -g @circle-fin/cli`
+- [Bun](https://bun.com) 1.2+
 - Circle Agent Skill installed for your agent host (see [Skill install](#skill-install))
 - A Circle API key and an `ANTHROPIC_API_KEY`
 
@@ -31,11 +32,11 @@ See https://agents.circle.com/skills/setup.md.
 ### Skill install
 
 ```bash
-npm install -g @circle-fin/cli
+bun add -g @circle-fin/cli
 circle skill install --tool claude-code
 
 # Universal fallback (any host):
-npx skills add circlefin/skills -g
+bunx skills add circlefin/skills -g
 ```
 
 ## Architecture

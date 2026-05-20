@@ -39,7 +39,7 @@ function unwrap<T>(raw: { data?: T } | T): T {
 /** Creates a new agent-controlled wallet on Base via `circle wallet create`. */
 export async function createWallet(input: CreateWalletInput = {}): Promise<AgentWallet> {
   const chain = input.chain ?? DEFAULT_CHAIN;
-  const out = runCircle(['wallet', 'create', '--output', 'json']);
+  const out = runCircle(['wallet', 'create', '--chain', chain]);
   const trimmed = out.trim();
   let address: string | undefined;
   try {
