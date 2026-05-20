@@ -20,6 +20,7 @@ export interface GetBalanceInput {
 interface RawWallet {
   address: string;
   chain?: Chain;
+  blockchain?: Chain;
   type?: string;
 }
 
@@ -30,15 +31,25 @@ interface RawBalance {
   balances?: TokenBalance[];
 }
 
+/** Strip a `{ data: T }` envelope if present. */
+function unwrap<T>(raw: { data?: T } | T): T {
+  return (raw as { data?: T }).data ?? (raw as T);
+}
+
 /** Creates a new agent-controlled wallet on Base via `circle wallet create`. */
 export async function createWallet(input: CreateWalletInput = {}): Promise<AgentWallet> {
   const chain = input.chain ?? DEFAULT_CHAIN;
-  const out = runCircle(['wallet', 'create']);
+  const out = runCircle(['wallet', 'create', '--output', 'json']);
   const trimmed = out.trim();
   let address: string | undefined;
   try {
-    const parsed = JSON.parse(trimmed) as Partial<RawWallet>;
-    address = parsed.address;
+    const parsed = unwrap(JSON.parse(trimmed) as { data?: Partial<RawWallet> } | Partial<RawWallet>);
+    // wallet create returns one wallet or an array — pick first address found
+    if (Array.isArray(parsed)) {
+      address = (parsed as RawWallet[]).find((w) => w.blockchain === chain || !w.blockchain)?.address;
+    } else {
+      address = (parsed as Partial<RawWallet>).address;
+    }
   } catch {
     address = trimmed.match(EVM_ADDRESS_REGEX)?.[0];
   }
@@ -48,10 +59,10 @@ export async function createWallet(input: CreateWalletInput = {}): Promise<Agent
   return { address, chain };
 }
 
-/** `circle wallet list --chain BASE --type agent --output json` */
+/** `circle wallet list --chain <chain> --type agent --output json` */
 export async function listWallets(input: ListWalletsInput = {}): Promise<AgentWallet[]> {
   const chain = input.chain ?? DEFAULT_CHAIN;
-  const raw = runCircleJson<RawWallet[] | { wallets?: RawWallet[] }>([
+  const envelope = runCircleJson<{ data?: { wallets?: RawWallet[] } } | RawWallet[] | { wallets?: RawWallet[] }>([
     'wallet',
     'list',
     '--chain',
@@ -61,14 +72,17 @@ export async function listWallets(input: ListWalletsInput = {}): Promise<AgentWa
     '--output',
     'json',
   ]);
-  const list = Array.isArray(raw) ? raw : (raw.wallets ?? []);
-  return list.map((w) => ({ address: w.address, chain: w.chain ?? chain }));
+  const raw = unwrap(envelope as { data?: RawWallet[] | { wallets?: RawWallet[] } });
+  const list: RawWallet[] = Array.isArray(raw)
+    ? (raw as RawWallet[])
+    : ((raw as { wallets?: RawWallet[] }).wallets ?? []);
+  return list.map((w) => ({ address: w.address, chain: w.chain ?? w.blockchain ?? chain }));
 }
 
-/** `circle wallet balance --address <addr> --chain BASE --output json` */
+/** `circle wallet balance --address <addr> --chain <chain> --output json` */
 export async function getBalance(input: GetBalanceInput): Promise<WalletBalance> {
   const chain = input.chain ?? DEFAULT_CHAIN;
-  const raw = runCircleJson<RawBalance>([
+  const envelope = runCircleJson<{ data?: RawBalance } | RawBalance>([
     'wallet',
     'balance',
     '--address',
@@ -78,6 +92,7 @@ export async function getBalance(input: GetBalanceInput): Promise<WalletBalance>
     '--output',
     'json',
   ]);
+  const raw: RawBalance = unwrap(envelope);
   const tokens = raw.tokens ?? raw.balances ?? [];
   return {
     address: raw.address ?? input.address,

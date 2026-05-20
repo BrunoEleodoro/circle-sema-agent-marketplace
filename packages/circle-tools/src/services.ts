@@ -19,27 +19,48 @@ export interface PayServiceInput {
   data: Record<string, unknown>;
 }
 
+interface RawSearchItem {
+  resource?: string;
+  accepts?: Array<{ amount?: string; network?: string }>;
+  metadata?: {
+    description?: string;
+    provider?: { name?: string };
+  };
+}
+
+interface RawSearchEnvelope {
+  data?: { items?: RawSearchItem[] };
+  items?: RawSearchItem[];
+}
+
 /** `circle services search "<keyword>" --output json` */
 export async function searchServices(input: SearchServicesInput): Promise<Service[]> {
-  const raw = runCircleJson<Service[] | { services?: Service[] }>([
+  const envelope = runCircleJson<RawSearchEnvelope>([
     'services',
     'search',
     input.keyword,
     '--output',
     'json',
   ]);
-  return Array.isArray(raw) ? raw : (raw.services ?? []);
+  const items = (envelope.data?.items ?? envelope.items) ?? [];
+  return items.map((item) => ({
+    url: item.resource ?? '',
+    name: item.metadata?.provider?.name ?? item.resource ?? '',
+    description: item.metadata?.description,
+    price: item.accepts?.[0]?.amount,
+  }));
 }
 
 /** `circle services inspect "<url>" --output json` */
 export async function inspectService(input: InspectServiceInput): Promise<ServiceInspection> {
-  return runCircleJson<ServiceInspection>([
+  const envelope = runCircleJson<{ data?: ServiceInspection } | ServiceInspection>([
     'services',
     'inspect',
     input.url,
     '--output',
     'json',
   ]);
+  return (envelope as { data?: ServiceInspection }).data ?? (envelope as ServiceInspection);
 }
 
 /** `circle services pay "<url>" --address <addr> --chain BASE --data '{"key":"value"}'` */
