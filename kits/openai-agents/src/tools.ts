@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline/promises';
 import { tool } from '@openai/agents';
 import { z } from 'zod';
 import {
@@ -9,8 +10,68 @@ import {
   payService,
   runCircle,
 } from '@circle-agent-stack-examples/circle-tools';
+import type { Chain } from '@circle-agent-stack-examples/circle-tools';
 
-const CHAIN = 'BASE' as const;
+const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+
+export const askUser = tool({
+  name: 'ask_user',
+  description:
+    'Ask the user a question and wait for their typed response. Use this to collect email addresses, OTP codes, confirmations, or any other input needed to proceed.',
+  parameters: z.object({
+    question: z.string().describe('The question or prompt to show the user'),
+  }),
+  execute: async ({ question }) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await rl.question(`\n${question}\n> `);
+    rl.close();
+    return answer.trim();
+  },
+});
+
+export const circleWalletStatus = tool({
+  name: 'circle_wallet_status',
+  description:
+    'Check Circle CLI authentication and Terms acceptance status. Always call this before any other Circle tool.',
+  parameters: z.object({}),
+  execute: async () => {
+    try {
+      return runCircle(['wallet', 'status']);
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  },
+});
+
+export const circleTermsAccept = tool({
+  name: 'circle_terms_accept',
+  description:
+    'Accept Circle Terms of Use and Privacy Policy. Only call this after the user has explicitly confirmed they accept.',
+  parameters: z.object({}),
+  execute: async () => runCircle(['terms', 'accept']),
+});
+
+export const circleWalletLoginInit = tool({
+  name: 'circle_wallet_login_init',
+  description:
+    'Start the Circle wallet login flow by sending an OTP to the given email. Returns the request ID needed for circle_wallet_login_complete.',
+  parameters: z.object({
+    email: z.string().describe('Email address to send the OTP to'),
+  }),
+  execute: async ({ email }) => runCircle(['wallet', 'login', email, '--init']),
+});
+
+export const circleWalletLoginComplete = tool({
+  name: 'circle_wallet_login_complete',
+  description:
+    'Complete the Circle wallet login using the request ID from circle_wallet_login_init and the OTP provided by the user.',
+  parameters: z.object({
+    requestId: z.string().describe('Request ID from circle_wallet_login_init'),
+    otp: z.string().describe('OTP code entered by the user'),
+  }),
+  execute: async ({ requestId, otp }) =>
+    runCircle(['wallet', 'login', '--request', requestId, '--otp', otp]),
+});
 
 export const fetchSkill = tool({
   name: 'fetch_skill',
@@ -61,6 +122,37 @@ export const circleWalletFund = tool({
   }),
   execute: async ({ address }) =>
     runCircle(['wallet', 'fund', '--address', address, '--chain', CHAIN, '--output', 'json']),
+});
+
+export const callFreeService = tool({
+  name: 'call_free_service',
+  description:
+    'Call a free (no-payment) service endpoint directly via HTTP. Use this when circle_inspect_service returns status "free". Supports GET and POST.',
+  parameters: z.object({
+    url: z.string().describe('The endpoint URL to call'),
+    method: z.enum(['GET', 'POST']).default('GET').describe('HTTP method'),
+    params: z.string().nullable().describe('JSON-encoded query params (GET) or request body (POST), or null if none'),
+  }),
+  execute: async ({ url, method = 'GET', params }) => {
+    let finalUrl = url;
+    const init: RequestInit = { method };
+    const parsed: Record<string, unknown> | null = params ? JSON.parse(params) : null;
+
+    if (method === 'GET' && parsed) {
+      const qs = new URLSearchParams(
+        Object.entries(parsed).map(([k, v]) => [k, String(v)] as [string, string]),
+      ).toString();
+      finalUrl = `${url}?${qs}`;
+    } else if (method === 'POST' && parsed) {
+      init.headers = { 'Content-Type': 'application/json' };
+      init.body = JSON.stringify(parsed);
+    }
+
+    const res = await fetch(finalUrl, init);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+    return text;
+  },
 });
 
 export const circleSearchServices = tool({

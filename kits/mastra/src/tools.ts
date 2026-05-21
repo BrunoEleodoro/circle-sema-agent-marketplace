@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline/promises';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import {
@@ -9,8 +10,68 @@ import {
   payService,
   runCircle,
 } from '@circle-agent-stack-examples/circle-tools';
+import type { Chain } from '@circle-agent-stack-examples/circle-tools';
 
-const CHAIN = 'BASE' as const;
+const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+
+export const askUser = createTool({
+  id: 'ask_user',
+  description:
+    'Ask the user a question and wait for their typed response. Use this to collect email addresses, OTP codes, confirmations, or any other input needed to proceed.',
+  inputSchema: z.object({
+    question: z.string().describe('The question or prompt to show the user'),
+  }),
+  execute: async (input) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await rl.question(`\n${input.question}\n> `);
+    rl.close();
+    return answer.trim();
+  },
+});
+
+export const circleWalletStatus = createTool({
+  id: 'circle_wallet_status',
+  description:
+    'Check Circle CLI authentication and Terms acceptance status. Always call this before any other Circle tool.',
+  inputSchema: z.object({}),
+  execute: async () => {
+    try {
+      return runCircle(['wallet', 'status']);
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  },
+});
+
+export const circleTermsAccept = createTool({
+  id: 'circle_terms_accept',
+  description:
+    'Accept Circle Terms of Use and Privacy Policy. Only call this after the user has explicitly confirmed they accept.',
+  inputSchema: z.object({}),
+  execute: async () => runCircle(['terms', 'accept']),
+});
+
+export const circleWalletLoginInit = createTool({
+  id: 'circle_wallet_login_init',
+  description:
+    'Start the Circle wallet login flow by sending an OTP to the given email. Returns the request ID needed for circle_wallet_login_complete.',
+  inputSchema: z.object({
+    email: z.string().describe('Email address to send the OTP to'),
+  }),
+  execute: async (input) => runCircle(['wallet', 'login', input.email, '--init']),
+});
+
+export const circleWalletLoginComplete = createTool({
+  id: 'circle_wallet_login_complete',
+  description:
+    'Complete the Circle wallet login using the request ID from circle_wallet_login_init and the OTP provided by the user.',
+  inputSchema: z.object({
+    requestId: z.string().describe('Request ID from circle_wallet_login_init'),
+    otp: z.string().describe('OTP code entered by the user'),
+  }),
+  execute: async (input) =>
+    runCircle(['wallet', 'login', '--request', input.requestId, '--otp', input.otp]),
+});
 
 export const fetchSkill = createTool({
   id: 'fetch_skill',
@@ -72,6 +133,37 @@ export const circleWalletFund = createTool({
       'json',
     ]);
     return out;
+  },
+});
+
+export const callFreeService = createTool({
+  id: 'call_free_service',
+  description:
+    'Call a free (no-payment) service endpoint directly via HTTP. Use this when circle_inspect_service returns status "free". Supports GET and POST.',
+  inputSchema: z.object({
+    url: z.string().describe('The endpoint URL to call'),
+    method: z.enum(['GET', 'POST']).default('GET').describe('HTTP method'),
+    params: z.record(z.string(), z.unknown()).optional().describe('Query params (GET) or JSON body (POST)'),
+  }),
+  execute: async (input) => {
+    let url = input.url;
+    const method = input.method ?? 'GET';
+    const init: RequestInit = { method };
+
+    if (method === 'GET' && input.params) {
+      const qs = new URLSearchParams(
+        Object.entries(input.params).map(([k, v]) => [k, String(v)] as [string, string]),
+      ).toString();
+      url = `${url}?${qs}`;
+    } else if (method === 'POST' && input.params) {
+      init.headers = { 'Content-Type': 'application/json' };
+      init.body = JSON.stringify(input.params);
+    }
+
+    const res = await fetch(url, init);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+    return text;
   },
 });
 
