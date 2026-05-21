@@ -1,4 +1,13 @@
-export type Chain = 'BASE';
+export type Chain =
+  | 'BASE'
+  | 'BASE-SEPOLIA'
+  | 'ETH'
+  | 'ETH-SEPOLIA'
+  | 'ARB'
+  | 'ARB-SEPOLIA'
+  | 'OP'
+  | 'OP-SEPOLIA'
+  | 'ARC-TESTNET';
 
 export interface AgentWallet {
   address: string;
