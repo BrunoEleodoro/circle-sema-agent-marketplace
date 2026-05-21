@@ -1,4 +1,4 @@
-import * as circle from '@circle-agent-stack-examples/circle-tools';
+import * as circle from '@agent-stack-ecosystem-kits/circle-tools';
 
 /**
  * Circle CLI primitives re-exported for the agent to consume.

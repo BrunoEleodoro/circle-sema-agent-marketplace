@@ -15,10 +15,10 @@ An Autonomous Payment Agent built with [LangChain Deep Agents](https://docs.lang
 ## Quickstart
 
 ```bash
-git clone <repo-url> && cd circle-agent-stack-examples
+git clone <repo-url> && cd agent-stack-ecosystem-kits
 bun install
 cp kits/langchain/.env.example kits/langchain/.env   # then fill in keys
-bun --filter @circle-agent-stack-examples/kit-langchain demo
+bun --filter @agent-stack-ecosystem-kits/kit-langchain demo
 ```
 
 > Run [Host setup](#host-setup) once before the first demo. After that, the demo

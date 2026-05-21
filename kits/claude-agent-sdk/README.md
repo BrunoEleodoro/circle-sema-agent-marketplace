@@ -15,10 +15,10 @@ An Autonomous Payment Agent built with the [Claude Agent SDK](https://code.claud
 ## Quickstart
 
 ```bash
-git clone <repo-url> && cd circle-agent-stack-examples
+git clone <repo-url> && cd agent-stack-ecosystem-kits
 bun install
 cp kits/claude-agent-sdk/.env.example kits/claude-agent-sdk/.env   # then fill in keys
-bun --filter @circle-agent-stack-examples/kit-claude-agent-sdk demo
+bun --filter @agent-stack-ecosystem-kits/kit-claude-agent-sdk demo
 ```
 
 ## Skill reference

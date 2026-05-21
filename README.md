@@ -18,7 +18,7 @@ Open-source example projects integrating the [Circle Agent Stack](https://develo
 ## Repository layout
 
 ```
-circle-agent-stack-examples/
+agent-stack-ecosystem-kits/
 ├── packages/
 │   └── circle-tools/         # shared, framework-agnostic
 └── kits/

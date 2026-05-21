@@ -1,5 +1,5 @@
 import { tool } from '@langchain/core/tools';
-import * as circle from '@circle-agent-stack-examples/circle-tools';
+import * as circle from '@agent-stack-ecosystem-kits/circle-tools';
 import { z } from 'zod';
 
 import {
