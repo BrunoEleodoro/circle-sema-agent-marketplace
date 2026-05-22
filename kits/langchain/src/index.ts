@@ -35,6 +35,27 @@ type Decision = { type: 'approve' } | { type: 'reject' };
 type Agent = ReturnType<typeof buildAgent>;
 type RunConfig = { configurable: { thread_id: string } };
 
+const EMPTY_RESPONSE_RETRIES = 2;
+
+/**
+ * True when the model returned no usable content: null/undefined, a blank
+ * string, or an empty content-block array. Under provider degradation the API
+ * can answer HTTP 200 with no content blocks (stop_reason set, no text). That is
+ * not a thrown error, so the model-level retry in agent.ts (which only fires on
+ * 5xx/529/429) never sees it; we catch the empty turn here instead.
+ */
+function isEmptyContent(content: unknown): boolean {
+  if (content == null) return true;
+  if (typeof content === 'string') return content.trim() === '';
+  if (Array.isArray(content)) return content.length === 0;
+  return false;
+}
+
+function finalContentOf(result: AgentResult): unknown {
+  const messages = result.messages ?? [];
+  return messages[messages.length - 1]?.content;
+}
+
 function actionName(req: ActionRequest): string {
   return req.name ?? req.action?.name ?? 'unknown_tool';
 }
@@ -70,34 +91,48 @@ async function runTurn(
   runConfig: RunConfig,
   ask: (q: string) => Promise<string>,
 ): Promise<AgentResult> {
-  let result = (await agent.invoke(input, runConfig)) as AgentResult;
+  let attempt = 0;
+  while (true) {
+    let result = (await agent.invoke(input, runConfig)) as AgentResult;
 
-  while (result.__interrupt__ && result.__interrupt__.length > 0) {
-    const requests = result.__interrupt__[0]?.value?.actionRequests ?? [];
-    const pending = requests.length > 0 ? requests : [{} as ActionRequest];
-    const decisions: Decision[] = [];
-    for (const req of pending) {
-      decisions.push(await reviewAction(req, ask));
+    while (result.__interrupt__ && result.__interrupt__.length > 0) {
+      const requests = result.__interrupt__[0]?.value?.actionRequests ?? [];
+      const pending = requests.length > 0 ? requests : [{} as ActionRequest];
+      const decisions: Decision[] = [];
+      for (const req of pending) {
+        decisions.push(await reviewAction(req, ask));
+      }
+      log('resuming agent ...');
+      result = (await agent.invoke(
+        new Command({ resume: { decisions } }),
+        runConfig,
+      )) as AgentResult;
     }
-    log('resuming agent ...');
-    result = (await agent.invoke(
-      new Command({ resume: { decisions } }),
-      runConfig,
-    )) as AgentResult;
-  }
 
-  return result;
+    // An empty final turn is a degraded-provider artifact, not a real reply.
+    // Re-run the turn (same input, same thread) to ask the model to regenerate;
+    // bounded so a sustained outage still ends instead of looping forever.
+    if (!isEmptyContent(finalContentOf(result)) || attempt >= EMPTY_RESPONSE_RETRIES) {
+      return result;
+    }
+    attempt += 1;
+    log(yellow(`empty model response; retrying turn (${attempt}/${EMPTY_RESPONSE_RETRIES}) ...`));
+  }
 }
 
 function printFinal(result: AgentResult): void {
-  const messages = result.messages ?? [];
-  const last = messages[messages.length - 1];
-  // A string reply is markdown, left as-is; a structured reply is highlighted JSON.
-  const finalContent =
-    typeof last?.content === 'string' ? last.content : colorizeJson(last?.content);
+  const content = finalContentOf(result);
+  // A string reply is markdown, left as-is; a structured reply is highlighted
+  // JSON. An empty turn that survived the retry in runTurn is flagged plainly so
+  // a degraded-provider blank never prints as a bare `[]`.
+  const finalContent = isEmptyContent(content)
+    ? yellow('(empty model response — provider may be degraded; try again in a moment)')
+    : typeof content === 'string'
+      ? content
+      : colorizeJson(content);
 
   console.log(`\n${heading('--- agent reply ---')}\n`);
-  console.log(finalContent ?? '(no reply)');
+  console.log(finalContent);
   console.log(`\n${heading('-------------------')}`);
 }
 
