@@ -11,7 +11,18 @@ import {
 } from '@circle-agent-stack-examples/circle-tools';
 import type { Chain } from '@circle-agent-stack-examples/circle-tools';
 
+import { toolLine } from './theme';
+
 const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+
+function log(line: string): void {
+  console.log(toolLine(line));
+}
+
+function preview(value: string, max = 120): string {
+  const oneLine = value.replace(/\s+/g, ' ').trim();
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine;
+}
 
 export const fetchSkill = createTool({
   id: 'fetch_skill',
@@ -21,13 +32,21 @@ export const fetchSkill = createTool({
     url: z.string().describe('The HTTPS URL of the skill to fetch'),
   }),
   execute: async (input) => {
-    const res = await fetch(input.url);
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch skill from ${input.url}: ${res.status} ${res.statusText}`,
-      );
+    log(`fetch_skill url=${input.url}`);
+    try {
+      const res = await fetch(input.url);
+      if (!res.ok) {
+        throw new Error(
+          `Failed to fetch skill from ${input.url}: ${res.status} ${res.statusText}`,
+        );
+      }
+      const text = await res.text();
+      log(`fetch_skill ← ${text.length} bytes`);
+      return text;
+    } catch (e) {
+      log(`fetch_skill ✗ ${(e as Error).message}`);
+      throw e;
     }
-    return res.text();
   },
 });
 
@@ -35,14 +54,34 @@ export const circleCreateWallet = createTool({
   id: 'circle_create_wallet',
   description: 'Create a new agent-controlled wallet on BASE via the Circle CLI.',
   inputSchema: z.object({}),
-  execute: async () => createWallet({ chain: CHAIN }),
+  execute: async () => {
+    log(`circle_create_wallet`);
+    try {
+      const result = await createWallet({ chain: CHAIN });
+      log(`circle_create_wallet ← ${(result as { address: string }).address}`);
+      return result;
+    } catch (e) {
+      log(`circle_create_wallet ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
 
 export const circleListWallets = createTool({
   id: 'circle_list_wallets',
   description: 'List existing agent wallets on BASE.',
   inputSchema: z.object({}),
-  execute: async () => listWallets({ chain: CHAIN }),
+  execute: async () => {
+    log(`circle_list_wallets`);
+    try {
+      const result = await listWallets({ chain: CHAIN });
+      log(`circle_list_wallets ← ${(result as unknown[]).length} wallet(s)`);
+      return result;
+    } catch (e) {
+      log(`circle_list_wallets ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
 
 export const circleGetBalance = createTool({
@@ -51,7 +90,19 @@ export const circleGetBalance = createTool({
   inputSchema: z.object({
     address: z.string().describe('The wallet address to check'),
   }),
-  execute: async (input) => getBalance({ address: input.address, chain: CHAIN }),
+  execute: async (input) => {
+    log(`circle_get_balance address=${input.address}`);
+    try {
+      const result = await getBalance({ address: input.address, chain: CHAIN });
+      const tokens = (result as { tokens: Array<{ symbol?: string; amount?: string }> }).tokens;
+      const usdc = tokens.find((t) => t.symbol?.toUpperCase() === 'USDC');
+      log(`circle_get_balance ← USDC=${usdc?.amount ?? '0'} (${tokens.length} token(s))`);
+      return result;
+    } catch (e) {
+      log(`circle_get_balance ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
 
 export const circleWalletFund = createTool({
@@ -62,17 +113,24 @@ export const circleWalletFund = createTool({
     address: z.string().describe('The wallet address to fund'),
   }),
   execute: async (input) => {
-    const out = runCircle([
-      'wallet',
-      'fund',
-      '--address',
-      input.address,
-      '--chain',
-      CHAIN,
-      '--output',
-      'json',
-    ]);
-    return out;
+    log(`circle_wallet_fund address=${input.address}`);
+    try {
+      const out = runCircle([
+        'wallet',
+        'fund',
+        '--address',
+        input.address,
+        '--chain',
+        CHAIN,
+        '--output',
+        'json',
+      ]);
+      log(`circle_wallet_fund ← done`);
+      return out;
+    } catch (e) {
+      log(`circle_wallet_fund ✗ ${(e as Error).message}`);
+      throw e;
+    }
   },
 });
 
@@ -86,24 +144,31 @@ export const callFreeService = createTool({
     params: z.record(z.string(), z.unknown()).optional().describe('Query params (GET) or JSON body (POST)'),
   }),
   execute: async (input) => {
-    let url = input.url;
     const method = input.method ?? 'GET';
-    const init: RequestInit = { method };
+    log(`call_free_service url=${input.url} method=${method}`);
+    try {
+      let url = input.url;
+      const init: RequestInit = { method };
 
-    if (method === 'GET' && input.params) {
-      const qs = new URLSearchParams(
-        Object.entries(input.params).map(([k, v]) => [k, String(v)] as [string, string]),
-      ).toString();
-      url = `${url}?${qs}`;
-    } else if (method === 'POST' && input.params) {
-      init.headers = { 'Content-Type': 'application/json' };
-      init.body = JSON.stringify(input.params);
+      if (method === 'GET' && input.params) {
+        const qs = new URLSearchParams(
+          Object.entries(input.params).map(([k, v]) => [k, String(v)] as [string, string]),
+        ).toString();
+        url = `${url}?${qs}`;
+      } else if (method === 'POST' && input.params) {
+        init.headers = { 'Content-Type': 'application/json' };
+        init.body = JSON.stringify(input.params);
+      }
+
+      const res = await fetch(url, init);
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+      log(`call_free_service ← HTTP ${res.status} ${text.length} bytes`);
+      return text;
+    } catch (e) {
+      log(`call_free_service ✗ ${(e as Error).message}`);
+      throw e;
     }
-
-    const res = await fetch(url, init);
-    const text = await res.text();
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-    return text;
   },
 });
 
@@ -113,7 +178,17 @@ export const circleSearchServices = createTool({
   inputSchema: z.object({
     keyword: z.string().describe('Search keyword for service discovery'),
   }),
-  execute: async (input) => searchServices({ keyword: input.keyword }),
+  execute: async (input) => {
+    log(`circle_search_services keyword="${input.keyword}"`);
+    try {
+      const result = await searchServices({ keyword: input.keyword });
+      log(`circle_search_services ← ${(result as unknown[]).length} hit(s)`);
+      return result;
+    } catch (e) {
+      log(`circle_search_services ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
 
 export const circleInspectService = createTool({
@@ -122,7 +197,17 @@ export const circleInspectService = createTool({
   inputSchema: z.object({
     url: z.string().describe('The service URL to inspect'),
   }),
-  execute: async (input) => inspectService({ url: input.url }),
+  execute: async (input) => {
+    log(`circle_inspect_service url=${input.url}`);
+    try {
+      const result = await inspectService({ url: input.url });
+      log(`circle_inspect_service ← ${preview(JSON.stringify(result))}`);
+      return result;
+    } catch (e) {
+      log(`circle_inspect_service ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
 
 export const circlePayService = createTool({
@@ -133,11 +218,23 @@ export const circlePayService = createTool({
     address: z.string().describe('The wallet address to pay from'),
     data: z.record(z.string(), z.unknown()).describe('JSON payload to send to the service'),
   }),
-  execute: async (input) =>
-    payService({
-      url: input.url,
-      address: input.address,
-      chain: CHAIN,
-      data: input.data,
-    }),
+  execute: async (input) => {
+    log(`circle_pay_service url=${input.url} from=${input.address}`);
+    try {
+      const result = await payService({
+        url: input.url,
+        address: input.address,
+        chain: CHAIN,
+        data: input.data,
+      });
+      const tx = (result as { txHash?: string }).txHash
+        ? ` txHash=${(result as { txHash?: string }).txHash}`
+        : '';
+      log(`circle_pay_service ← paid${tx}`);
+      return result;
+    } catch (e) {
+      log(`circle_pay_service ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
 });
