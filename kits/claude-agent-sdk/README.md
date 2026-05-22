@@ -18,8 +18,12 @@ An Autonomous Payment Agent built with the [Claude Agent SDK](https://code.claud
 git clone <repo-url> && cd agent-stack-ecosystem-kits
 bun install
 cp kits/claude-agent-sdk/.env.example kits/claude-agent-sdk/.env   # then fill in keys
-bun --filter @agent-stack-ecosystem-kits/kit-claude-agent-sdk demo
+bun run --cwd kits/claude-agent-sdk demo
 ```
+
+> Run the demo with `--cwd`, not `bun --filter`. `--filter` wraps output in a
+> dashboard that elides lines; `--cwd` runs the script directly with plain,
+> full output.
 
 ## Skill reference
 

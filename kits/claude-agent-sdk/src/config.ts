@@ -2,7 +2,6 @@ import 'dotenv/config';
 
 export interface KitConfig {
   circleApiKey: string;
-  chain: 'BASE';
   anthropicApiKey: string;
 }
 

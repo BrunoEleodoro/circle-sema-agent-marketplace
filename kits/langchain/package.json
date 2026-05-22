@@ -17,6 +17,7 @@
     "@agent-stack-ecosystem-kits/circle-tools": "workspace:*",
     "@langchain/anthropic": "^1.3.26",
     "@langchain/core": "^1.1.44",
+    "@langchain/langgraph": "^1.3.0",
     "@langchain/openai": "^1.4.1",
     "deepagents": "^1.10.2",
     "dotenv": "^17.4.2",

@@ -3,7 +3,6 @@ import 'dotenv/config';
 export type LLMProvider = 'anthropic' | 'openai';
 
 export interface KitConfig {
-  chain: 'BASE';
   provider: LLMProvider;
   providerApiKey: string;
   model: string;
@@ -14,11 +13,6 @@ const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 
 export function loadConfig(): KitConfig {
   const env = process.env;
-
-  const chainRaw = env.CIRCLE_CHAIN ?? 'BASE';
-  if (chainRaw !== 'BASE') {
-    throw new Error(`Unsupported CIRCLE_CHAIN="${chainRaw}". Only BASE is supported today.`);
-  }
 
   let provider: LLMProvider;
   let providerApiKey: string;
@@ -38,7 +32,6 @@ export function loadConfig(): KitConfig {
   }
 
   return {
-    chain: 'BASE',
     provider,
     providerApiKey,
     model,

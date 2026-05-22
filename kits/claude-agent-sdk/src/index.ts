@@ -6,7 +6,7 @@ async function main(): Promise<void> {
   console.log('[claude-agent-sdk-kit] starting Autonomous Payment Agent demo');
 
   const config = loadConfig();
-  console.log(`[claude-agent-sdk-kit] chain=${config.chain}`);
+  void config;
 
   const skill = await fetchSetupSkill();
   console.log(`[claude-agent-sdk-kit] bootstrapped from ${SETUP_SKILL_URL} (${skill.length} bytes)`);
