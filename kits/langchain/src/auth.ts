@@ -1,5 +1,7 @@
 import { CircleCliError, runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 
+import { bold } from './theme';
+
 /**
  * Inline Circle login for the demo's first run.
  *
@@ -88,7 +90,7 @@ export async function ensureLoggedIn(
   }
 
   log('no active Circle session, starting email OTP login');
-  const email = (await ask('Circle account email:\n> ')).trim();
+  const email = (await ask(`${bold('Circle account email:')}\n> `)).trim();
   if (!email) throw new Error('No email entered, cannot log in.');
 
   let initOut: string;
@@ -109,7 +111,9 @@ export async function ensureLoggedIn(
     throw new Error(`Could not parse a login request ID from the CLI output:\n${initOut}`);
   }
 
-  const otp = (await ask('OTP from the email (6 digits, or full e.g. B1X-123456):\n> ')).trim();
+  const otp = (
+    await ask(`${bold('OTP from the email (6 digits, or full e.g. B1X-123456):')}\n> `)
+  ).trim();
   if (!otp) throw new Error('No OTP entered, cannot complete login.');
 
   try {

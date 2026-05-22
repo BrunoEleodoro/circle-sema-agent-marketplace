@@ -31,7 +31,17 @@ export interface ServiceInspection extends Service {
 }
 
 export interface PaymentResult {
-  txHash: string;
+  /**
+   * The paid service's response body: the data the caller actually paid for.
+   * JSON is re-stringified compact; non-JSON is passed through verbatim.
+   */
+  response: string;
+  /**
+   * On-chain settlement tx hash, when one can be parsed from the payment
+   * receipt. Best-effort: a successful payment may still omit it, so success is
+   * decided by the CLI exit code, not by this field's presence.
+   */
+  txHash?: string;
   serviceUrl: string;
   amount: string;
 }

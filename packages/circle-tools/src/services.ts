@@ -415,27 +415,44 @@ function appendQuery(url: string, data: Record<string, unknown>): string {
 }
 
 /**
- * Pretty-print CLI output for error messages. Most x402 services return JSON, so
- * a parse-and-reindent makes the raw body readable instead of a single packed
- * line. Services aren't guaranteed to return JSON (some send plain text), so a
- * parse failure falls back to the untouched output.
+ * Best-effort tx-hash extraction. A bare 64-hex hash in the text wins; failing
+ * that, x402 settle receipts (the `x-payment-response` header surfaced as
+ * `payment.receipt`) are base64-encoded JSON like `{"transaction":"0x..."}`, so
+ * decode and look inside. Never throws: a missing hash is not an error.
  */
-function formatRawOutput(out: string): string {
+function extractTxHash(source: string | undefined): string | undefined {
+  if (!source) return undefined;
+  const direct = source.match(TX_HASH_REGEX)?.[0];
+  if (direct) return direct;
   try {
-    return JSON.stringify(JSON.parse(out.trim()), null, 2);
+    const decoded = Buffer.from(source, 'base64').toString('utf8');
+    return decoded.match(TX_HASH_REGEX)?.[0];
   } catch {
-    return out;
+    return undefined;
   }
 }
 
+/** The `{ response, payment }` envelope `circle services pay --output json` prints. */
+interface RawPayEnvelope {
+  response?: unknown;
+  payment?: { amount?: string; receipt?: string };
+}
+
 /**
- * `circle services pay "<url>" --address <addr> --chain BASE -X <method> [-d '<json>']`
+ * `circle services pay "<url>" --address <addr> --chain BASE -X <method> [-d '<json>'] --output json`
  *
  * The CLI's `-d/--data` flag implies POST and sends a JSON request body. A GET
  * service reads its input from the URL query string, so for GET/DELETE the
  * payload is encoded onto the URL and `-d` is omitted; sending a body to a GET
  * endpoint makes the server see no input (and still spends USDC, since the x402
  * payment is submitted before the request resolves).
+ *
+ * `--output json` is required. The CLI's default `table` output for a paid call
+ * prints *only the service response body, with no tx hash* — so a hash-presence
+ * check there fails on every successful payment whose body has no 0x… hash,
+ * making the caller re-pay in a loop. With JSON the result is wrapped as
+ * `{ response, payment: { amount, receipt } }`, and success is the CLI exit code
+ * (a real failure throws), never whether a hash was found.
  */
 export async function payService(input: PayServiceInput): Promise<PaymentResult> {
   const method = (input.method ?? 'GET').toUpperCase();
@@ -453,6 +470,8 @@ export async function payService(input: PayServiceInput): Promise<PaymentResult>
     method,
     '--timeout',
     String(PAY_TIMEOUT_SECONDS),
+    '--output',
+    'json',
   ];
   if (sendsBody) {
     args.push('--data', JSON.stringify(input.data));
@@ -464,22 +483,34 @@ export async function payService(input: PayServiceInput): Promise<PaymentResult>
   } catch (e) {
     throw explainPayError(e, input.url);
   }
+
+  // The call settled the moment runCircle returned without throwing; from here
+  // we only shape the body for the caller, never re-derive success.
   const trimmed = out.trim();
+  let envelope: RawPayEnvelope;
   try {
-    const parsed = JSON.parse(trimmed) as Partial<PaymentResult>;
-    if (parsed.txHash) {
-      return {
-        txHash: parsed.txHash,
-        serviceUrl: parsed.serviceUrl ?? input.url,
-        amount: parsed.amount ?? '',
-      };
-    }
+    envelope = JSON.parse(trimmed) as RawPayEnvelope;
   } catch {
-    // fall through to regex extraction
+    // Non-JSON stdout (a quiet-mode plain-text body, say): hand it back as-is.
+    return {
+      response: trimmed,
+      txHash: extractTxHash(trimmed),
+      serviceUrl: input.url,
+      amount: '',
+    };
   }
-  const txHash = trimmed.match(TX_HASH_REGEX)?.[0];
-  if (!txHash) {
-    throw new Error(`circle services pay returned no transaction hash. Raw output:\n${formatRawOutput(out)}`);
-  }
-  return { txHash, serviceUrl: input.url, amount: '' };
+
+  const response =
+    envelope.response === undefined
+      ? trimmed
+      : typeof envelope.response === 'string'
+        ? envelope.response
+        : JSON.stringify(envelope.response);
+
+  return {
+    response,
+    txHash: extractTxHash(envelope.payment?.receipt) ?? extractTxHash(trimmed),
+    serviceUrl: input.url,
+    amount: envelope.payment?.amount ?? '',
+  };
 }

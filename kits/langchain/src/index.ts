@@ -7,9 +7,10 @@ import { buildAgent } from './agent';
 import { ensureLoggedIn } from './auth';
 import { loadConfig } from './config';
 import { SETUP_SKILL_URL } from './skill';
+import { bold, colorizeJson, green, heading, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
-  console.log(`[langchain-kit] ${line}`);
+  console.log(kitLine(line));
 }
 
 /** A tool call the agent paused on, awaiting human review. Shape is loose
@@ -48,12 +49,12 @@ async function reviewAction(
   ask: (q: string) => Promise<string>,
 ): Promise<Decision> {
   const name = actionName(req);
-  log(`approval required for tool: ${name}`);
-  console.log(JSON.stringify(actionArgs(req), null, 2));
+  log(yellow(`approval required for tool: ${bold(name)}`));
+  console.log(colorizeJson(actionArgs(req)));
 
-  const answer = (await ask('Approve this action? [y/N] ')).trim().toLowerCase();
+  const answer = (await ask(bold('Approve this action? [y/N] '))).trim().toLowerCase();
   const approved = answer === 'y' || answer === 'yes';
-  log(approved ? 'approved by user' : 'rejected by user');
+  log(approved ? green('approved by user') : red('rejected by user'));
   return { type: approved ? 'approve' : 'reject' };
 }
 
@@ -91,12 +92,13 @@ async function runTurn(
 function printFinal(result: AgentResult): void {
   const messages = result.messages ?? [];
   const last = messages[messages.length - 1];
+  // A string reply is markdown, left as-is; a structured reply is highlighted JSON.
   const finalContent =
-    typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content, null, 2);
+    typeof last?.content === 'string' ? last.content : colorizeJson(last?.content);
 
-  console.log('\n--- agent reply ---\n');
+  console.log(`\n${heading('--- agent reply ---')}\n`);
   console.log(finalContent ?? '(no reply)');
-  console.log('\n-------------------');
+  console.log(`\n${heading('-------------------')}`);
 }
 
 async function main(): Promise<void> {
@@ -146,7 +148,7 @@ async function main(): Promise<void> {
       const result = await runTurn(agent, input, runConfig, ask);
       printFinal(result);
 
-      const next = (await ask('\nYou:\n> ')).trim();
+      const next = (await ask(`\n${bold('You:')}\n> `)).trim();
       if (!next || next.toLowerCase() === 'quit') {
         log('done.');
         break;
@@ -160,6 +162,6 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error(`[langchain-kit] FATAL: ${message}`);
+  console.error(kitLine(red(`FATAL: ${message}`)));
   process.exit(1);
 });

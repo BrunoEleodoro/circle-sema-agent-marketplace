@@ -10,9 +10,10 @@ import {
   SUB_SKILL_NAMES,
   type SubSkillName,
 } from './skill';
+import { toolLine } from './theme';
 
 function log(line: string): void {
-  console.log(`[tool] ${line}`);
+  console.log(toolLine(line));
 }
 
 function ok(value: unknown): string {
@@ -300,7 +301,8 @@ export function buildTools() {
 
       try {
         const result = await circle.payService({ url, address, data, method: httpMethod });
-        log(`circle_pay_service ← txHash=${result.txHash}`);
+        const tx = result.txHash ? ` txHash=${result.txHash}` : '';
+        log(`circle_pay_service ← paid${tx} ${result.response.length} bytes`);
         return ok(result);
       } catch (e) {
         log(`circle_pay_service ✗ ${(e as Error).message}`);

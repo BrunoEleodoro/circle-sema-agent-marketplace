@@ -37,6 +37,7 @@ bun run --cwd kits/langchain demo
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` *or* `OPENAI_API_KEY` | one of | Provider auto-selected from whichever key is set. Anthropic wins if both are set. |
 | `LLM_MODEL` | no | Overrides the default model (`claude-sonnet-4-6` / `gpt-4o-mini`). |
+| `NO_COLOR` | no | Set to disable colored output. Color is auto-disabled when output is piped or redirected. |
 
 The kit operates on Base mainnet only; there is no chain to configure.
 
