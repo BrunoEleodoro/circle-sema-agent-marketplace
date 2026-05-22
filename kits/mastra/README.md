@@ -17,7 +17,7 @@ An Autonomous Payment Agent built with [Mastra](https://mastra.ai). From a singl
 git clone <repo-url> && cd circle-agent-stack-examples
 bun install
 cp kits/mastra/.env.example kits/mastra/.env   # then fill in keys
-bun --filter @circle-agent-stack-examples/kit-mastra demo
+bun --filter @agent-stack-ecosystem-kits/kit-mastra demo
 ```
 
 ## Skill reference

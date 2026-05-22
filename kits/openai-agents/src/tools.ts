@@ -8,12 +8,11 @@ import {
   inspectService,
   payService,
   runCircle,
-} from '@circle-agent-stack-examples/circle-tools';
-import type { Chain } from '@circle-agent-stack-examples/circle-tools';
+} from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { toolLine } from './theme';
 
-const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE');
 
 function log(line: string): void {
   console.log(toolLine(line));
@@ -55,7 +54,7 @@ export const circleCreateWallet = tool({
   execute: async () => {
     log(`circle_create_wallet`);
     try {
-      const result = await createWallet({ chain: CHAIN });
+      const result = await createWallet();
       log(`circle_create_wallet ← ${(result as { address: string }).address}`);
       return JSON.stringify(result);
     } catch (e) {
@@ -72,7 +71,7 @@ export const circleListWallets = tool({
   execute: async () => {
     log(`circle_list_wallets`);
     try {
-      const result = await listWallets({ chain: CHAIN });
+      const result = await listWallets();
       log(`circle_list_wallets ← ${(result as unknown[]).length} wallet(s)`);
       return JSON.stringify(result);
     } catch (e) {
@@ -91,7 +90,7 @@ export const circleGetBalance = tool({
   execute: async ({ address }) => {
     log(`circle_get_balance address=${address}`);
     try {
-      const result = await getBalance({ address, chain: CHAIN });
+      const result = await getBalance({ address });
       const tokens = (result as { tokens: Array<{ symbol?: string; amount?: string }> }).tokens;
       const usdc = tokens.find((t) => t.symbol?.toUpperCase() === 'USDC');
       log(`circle_get_balance ← USDC=${usdc?.amount ?? '0'} (${tokens.length} token(s))`);
@@ -211,7 +210,7 @@ export const circlePayService = tool({
   execute: async ({ url, address, data }) => {
     log(`circle_pay_service url=${url} from=${address}`);
     try {
-      const result = await payService({ url, address, chain: CHAIN, data });
+      const result = await payService({ url, address, data });
       const tx = (result as { txHash?: string }).txHash
         ? ` txHash=${(result as { txHash?: string }).txHash}`
         : '';

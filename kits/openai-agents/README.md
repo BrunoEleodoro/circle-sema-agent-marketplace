@@ -17,7 +17,7 @@ An Autonomous Payment Agent built with the [OpenAI Agents SDK](https://openai.gi
 git clone <repo-url> && cd circle-agent-stack-examples
 bun install
 cp kits/openai-agents/.env.example kits/openai-agents/.env   # then fill in keys
-bun --filter @circle-agent-stack-examples/kit-openai-agents demo
+bun --filter @agent-stack-ecosystem-kits/kit-openai-agents demo
 ```
 
 ## Skill reference

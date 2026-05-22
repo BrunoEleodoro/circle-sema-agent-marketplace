@@ -18,7 +18,7 @@ Open-source example projects integrating the [Circle Agent Stack](https://develo
 ## Repository layout
 
 ```
-circle-agent-stack-examples/
+agent-stack-ecosystem-kits/
 ├── packages/
 │   └── circle-tools/         # shared, framework-agnostic
 └── kits/
@@ -32,20 +32,19 @@ circle-agent-stack-examples/
 
 - Node.js 20+
 - [Bun](https://bun.com) 1.2+ (workspace manager)
-- Circle CLI: `npm install -g @circle-fin/cli`
+- Circle CLI: `bun add -g @circle-fin/cli`
 - Circle Agent Skills (one of):
   - `circle skill install --tool <claude-code|cursor|codex|opencode|amp>`
-  - Universal fallback: `npx skills add circlefin/skills -g`
+  - Universal fallback: `bunx skills add circlefin/skills -g`
 - A Circle account and API key
 
 ## Install
 
 ```bash
 bun install
-cp .env.example .env   # fill in your credentials
 ```
 
-This installs all workspace dependencies from the repo root. Each kit exposes a `bun run demo` (or `npm run demo`) entrypoint. See its README for details.
+This installs all workspace dependencies from the repo root. Each kit owns its own `.env.example` (copy to `.env` inside that kit's folder) and exposes a `bun run demo` entrypoint. See its README for details.
 
 ## Demo use case
 

@@ -1,34 +1,68 @@
 import { runCircle, runCircleJson } from './cli';
-import type { AgentWallet, Chain, TokenBalance, WalletBalance } from './types';
+import type { AgentWallet, TokenBalance, WalletBalance } from './types';
 
-const DEFAULT_CHAIN: Chain = 'BASE';
+/** The kit operates on Base mainnet only. */
+const CHAIN = 'BASE';
 const EVM_ADDRESS_REGEX = /0x[a-fA-F0-9]{40}/;
+const TX_HASH_REGEX = /0x[a-fA-F0-9]{64}/;
+const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+/** Extra attempts for idempotent read commands when the network blips. */
+const READ_RETRIES = 3;
 
-export interface CreateWalletInput {
-  chain?: Chain;
-}
+/** Public Base JSON-RPC endpoint, used to detect Smart Contract Account deployment. */
+const BASE_RPC_URL = 'https://mainnet.base.org';
 
-export interface ListWalletsInput {
-  chain?: Chain;
-}
+/** After the bootstrap transfer, poll eth_getCode until the SCA appears. */
+const DEPLOY_POLL_INTERVAL_MS = 1_500;
+const DEPLOY_POLL_TIMEOUT_MS = 45_000;
 
 export interface GetBalanceInput {
   address: string;
-  chain?: Chain;
+}
+
+export interface DeployWalletInput {
+  address: string;
+}
+
+export interface DeployWalletResult {
+  address: string;
+  /** True once the SCA contract is confirmed on-chain. */
+  deployed: boolean;
+  /** True when the wallet was already deployed and no transaction was sent. */
+  alreadyDeployed: boolean;
+  /** Circle transaction id of the bootstrap transfer, when one was sent. */
+  txId?: string;
 }
 
 interface RawWallet {
   address: string;
-  chain?: Chain;
-  blockchain?: Chain;
-  type?: string;
+  blockchain?: string;
+}
+
+/** The Circle CLI wraps every `--output json` payload in a `{ data: ... }` envelope. */
+interface CircleEnvelope<T> {
+  data?: T;
+}
+
+interface RawWalletList {
+  wallets?: RawWallet[];
+}
+
+/**
+ * A balance entry as the CLI emits it: the amount sits at the top level and the
+ * symbol is nested under `token` (`{ amount, token: { symbol } }`), not flat.
+ */
+interface RawTokenBalance {
+  amount?: string;
+  token?: { symbol?: string };
+  symbol?: string;
 }
 
 interface RawBalance {
   address?: string;
-  chain?: Chain;
-  tokens?: TokenBalance[];
-  balances?: TokenBalance[];
+  blockchain?: string;
+  tokens?: RawTokenBalance[];
+  balances?: RawTokenBalance[];
 }
 
 /** Strip a `{ data: T }` envelope if present. */
@@ -37,66 +71,148 @@ function unwrap<T>(raw: { data?: T } | T): T {
 }
 
 /** Creates a new agent-controlled wallet on Base via `circle wallet create`. */
-export async function createWallet(input: CreateWalletInput = {}): Promise<AgentWallet> {
-  const chain = input.chain ?? DEFAULT_CHAIN;
-  const out = runCircle(['wallet', 'create', '--output', 'json']);
+export async function createWallet(): Promise<AgentWallet> {
+  const out = runCircle(['wallet', 'create', '--chain', CHAIN, '--output', 'json']);
   const trimmed = out.trim();
   let address: string | undefined;
   try {
-    const parsed = unwrap(JSON.parse(trimmed) as { data?: Partial<RawWallet> } | Partial<RawWallet>);
-    // wallet create returns one wallet or an array — pick first address found
-    if (Array.isArray(parsed)) {
-      address = (parsed as RawWallet[]).find((w) => w.blockchain === chain || !w.blockchain)?.address;
-    } else {
-      address = (parsed as Partial<RawWallet>).address;
-    }
+    const raw = JSON.parse(trimmed) as CircleEnvelope<RawWalletList>;
+    const wallets = raw.data?.wallets ?? [];
+    // `circle wallet create` provisions one address across every chain; pick the
+    // Base entry so the returned wallet is the Base address.
+    const match = wallets.find((w) => w.blockchain?.toUpperCase() === CHAIN) ?? wallets[0];
+    address = match?.address;
   } catch {
     address = trimmed.match(EVM_ADDRESS_REGEX)?.[0];
   }
   if (!address) {
     throw new Error(`circle wallet create returned no address. Raw output:\n${out}`);
   }
-  return { address, chain };
+  return { address };
 }
 
-/** `circle wallet list --chain <chain> --type agent --output json` */
-export async function listWallets(input: ListWalletsInput = {}): Promise<AgentWallet[]> {
-  const chain = input.chain ?? DEFAULT_CHAIN;
-  const envelope = runCircleJson<{ data?: { wallets?: RawWallet[] } } | RawWallet[] | { wallets?: RawWallet[] }>([
-    'wallet',
-    'list',
-    '--chain',
-    chain,
-    '--type',
-    'agent',
-    '--output',
-    'json',
-  ]);
-  const raw = unwrap(envelope as { data?: RawWallet[] | { wallets?: RawWallet[] } });
-  const list: RawWallet[] = Array.isArray(raw)
-    ? (raw as RawWallet[])
-    : ((raw as { wallets?: RawWallet[] }).wallets ?? []);
-  return list.map((w) => ({ address: w.address, chain: w.chain ?? w.blockchain ?? chain }));
+/** `circle wallet list --chain BASE --type agent --output json` */
+export async function listWallets(): Promise<AgentWallet[]> {
+  const raw = runCircleJson<CircleEnvelope<RawWalletList>>(
+    ['wallet', 'list', '--chain', CHAIN, '--type', 'agent', '--output', 'json'],
+    { retries: READ_RETRIES },
+  );
+  const list = raw.data?.wallets ?? [];
+  return list.map((w) => ({ address: w.address }));
 }
 
 /** `circle wallet balance --address <addr> --chain <chain> --output json` */
 export async function getBalance(input: GetBalanceInput): Promise<WalletBalance> {
-  const chain = input.chain ?? DEFAULT_CHAIN;
-  const envelope = runCircleJson<{ data?: RawBalance } | RawBalance>([
+  const raw = runCircleJson<CircleEnvelope<RawBalance>>(
+    ['wallet', 'balance', '--address', input.address, '--chain', CHAIN, '--output', 'json'],
+    { retries: READ_RETRIES },
+  );
+  const rawTokens = raw.data?.balances ?? raw.data?.tokens ?? [];
+  const tokens: TokenBalance[] = rawTokens.map((t) => ({
+    symbol: (t.token?.symbol ?? t.symbol ?? '').toUpperCase(),
+    amount: t.amount ?? '0',
+  }));
+  return {
+    address: raw.data?.address ?? input.address,
+    tokens,
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Pull a transaction id/hash out of `circle wallet transfer` output. Agent
+ * wallets return a Circle transaction UUID; an on-chain hash is also tolerated.
+ */
+function extractTxId(out: string): string | undefined {
+  const trimmed = out.trim();
+  try {
+    const env = JSON.parse(trimmed) as { data?: Record<string, unknown> };
+    const data = env.data ?? {};
+    const id = data.id ?? data.transactionId ?? data.txHash ?? data.transactionHash;
+    if (typeof id === 'string') return id;
+  } catch {
+    // fall through to regex extraction
+  }
+  return trimmed.match(TX_HASH_REGEX)?.[0] ?? trimmed.match(UUID_REGEX)?.[0];
+}
+
+/**
+ * Check whether a wallet's Smart Contract Account is deployed on-chain.
+ *
+ * A Circle agent wallet address is *counterfactual*: deterministically derived
+ * from the account factory until its first outbound transaction. Until then
+ * `eth_getCode` returns empty ("0x"), and x402 payment signing (validated via
+ * EIP-1271 against the wallet contract) fails. Receiving USDC does not deploy
+ * the contract; only an outbound transaction does.
+ */
+export async function isWalletDeployed(input: DeployWalletInput): Promise<boolean> {
+  const res = await fetch(BASE_RPC_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_getCode',
+      params: [input.address, 'latest'],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`eth_getCode failed for ${input.address}: ${res.status} ${res.statusText}`);
+  }
+  const body = (await res.json()) as { result?: string; error?: { message?: string } };
+  if (body.error) {
+    throw new Error(`eth_getCode error for ${input.address}: ${body.error.message ?? 'unknown'}`);
+  }
+  // Empty code ("0x") means the SCA contract has not been deployed yet.
+  const code = body.result ?? '0x';
+  return code.length > 2 && code !== '0x0';
+}
+
+/**
+ * Deploy an agent wallet's Smart Contract Account by sending a zero-value
+ * self-transfer, the wallet's first outbound transaction. Idempotent: if the
+ * wallet is already deployed, no transaction is sent. After submitting, polls
+ * `eth_getCode` until the contract is confirmed on-chain, so a caller can pay
+ * immediately afterward without a deploy/pay race.
+ */
+export async function deployWallet(input: DeployWalletInput): Promise<DeployWalletResult> {
+  const { address } = input;
+
+  if (await isWalletDeployed({ address })) {
+    return { address, deployed: true, alreadyDeployed: true };
+  }
+
+  // Zero-value self-transfer. Mutating, so runCircle keeps retries at 0 (default)
+  // so a dropped connection never double-sends.
+  const out = runCircle([
     'wallet',
-    'balance',
+    'transfer',
+    address,
+    '--amount',
+    '0',
     '--address',
-    input.address,
+    address,
     '--chain',
-    chain,
+    CHAIN,
     '--output',
     'json',
   ]);
-  const raw: RawBalance = unwrap(envelope);
-  const tokens = raw.tokens ?? raw.balances ?? [];
-  return {
-    address: raw.address ?? input.address,
-    chain: raw.chain ?? chain,
-    tokens,
-  };
+  const txId = extractTxId(out);
+
+  // The SCA appears on-chain a few seconds after the transfer lands. Poll so
+  // the wallet is provably deployed before this returns.
+  const deadline = Date.now() + DEPLOY_POLL_TIMEOUT_MS;
+  let deployed = false;
+  while (Date.now() < deadline) {
+    await sleep(DEPLOY_POLL_INTERVAL_MS);
+    if (await isWalletDeployed({ address })) {
+      deployed = true;
+      break;
+    }
+  }
+
+  return { address, deployed, alreadyDeployed: false, txId };
 }
