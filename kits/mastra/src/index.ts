@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline/promises';
 import { onboardingWorkflow } from './workflow';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
+import { withRetry } from './retry';
 
 const INITIAL_PROMPT =
   'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
@@ -54,7 +55,7 @@ async function main(): Promise<void> {
     const input = await ask('You:');
     if (!input || input.toLowerCase() === 'exit') break;
     messages.push({ role: 'user', content: input });
-    const response = await agent.generate(messages, { maxSteps: 30 });
+    const response = await withRetry(() => agent.generate(messages, { maxSteps: 30 }), 'agent');
     const text = response.text ?? '(no output)';
     console.log('\n' + text + '\n');
     messages.push({ role: 'assistant', content: text });
