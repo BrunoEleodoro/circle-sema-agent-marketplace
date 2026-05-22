@@ -1,8 +1,7 @@
 import { runCircle, runCircleJson } from './cli';
+import { chainCli, DEFAULT_CHAIN, type Chain } from './chains';
 import type { GatewayBalance, GatewayDepositResult } from './types';
 
-/** The kit operates on Base mainnet only. */
-const CHAIN = 'BASE';
 /** Extra attempts for idempotent read commands when the network blips. */
 const READ_RETRIES = 3;
 const TX_HASH_REGEX = /0x[a-fA-F0-9]{64}/;
@@ -10,12 +9,16 @@ const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 
 export interface GatewayBalanceInput {
   address: string;
+  /** Chain to read the Gateway balance on. Defaults to Base. */
+  chain?: Chain;
 }
 
 export interface GatewayDepositInput {
   address: string;
-  /** USDC amount to move into the Base Gateway balance. */
+  /** USDC amount to move into the Gateway balance. */
   amount: number;
+  /** Chain to deposit into. Defaults to Base. */
+  chain?: Chain;
 }
 
 /** Loose shape of one per-chain row in `circle gateway balance` JSON output. */
@@ -53,7 +56,16 @@ function unwrap(raw: unknown): RawGatewayData {
  */
 export async function gatewayBalance(input: GatewayBalanceInput): Promise<GatewayBalance> {
   const raw = runCircleJson<unknown>(
-    ['gateway', 'balance', '--address', input.address, '--chain', CHAIN, '--output', 'json'],
+    [
+      'gateway',
+      'balance',
+      '--address',
+      input.address,
+      '--chain',
+      chainCli(input.chain ?? DEFAULT_CHAIN),
+      '--output',
+      'json',
+    ],
     { retries: READ_RETRIES },
   );
   const data = unwrap(raw);
@@ -87,7 +99,7 @@ export async function gatewayDeposit(input: GatewayDepositInput): Promise<Gatewa
     '--address',
     input.address,
     '--chain',
-    CHAIN,
+    chainCli(input.chain ?? DEFAULT_CHAIN),
     '--method',
     'direct',
     '--output',

@@ -1,3 +1,5 @@
+import type { Chain } from './chains';
+
 export interface AgentWallet {
   address: string;
 }
@@ -74,9 +76,11 @@ export interface FetchServiceResult {
 /** Whether an x402 payment option is plain x402 or Circle Gateway batched. */
 export type AcceptKind = 'vanilla' | 'gateway';
 
-/** One Base payment option from a service's x402 challenge. */
+/** One payment option from a service's x402 challenge, on a chain the kit supports. */
 export interface AcceptOption {
   kind: AcceptKind;
+  /** The chain this option settles on (Base or Polygon). */
+  chain: Chain;
   /** Price in atomic USDC units (6 decimals). */
   amountAtomic: string;
 }
@@ -84,8 +88,8 @@ export interface AcceptOption {
 /** A service's x402 payment options, normalised to what the kit can act on. */
 export interface ServiceAccepts {
   url: string;
-  /** Payment options the kit can pay (Base only). */
+  /** Payment options the kit can pay, across every supported chain (Base, Polygon). */
   options: AcceptOption[];
-  /** CAIP-2 networks the seller offers but the kit cannot use (e.g. Polygon, Solana). */
+  /** CAIP-2 networks the seller offers but the kit cannot use (e.g. Solana, Ethereum). */
   unsupportedNetworks: string[];
 }

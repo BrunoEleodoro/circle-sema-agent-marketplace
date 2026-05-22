@@ -39,7 +39,7 @@ bun run --cwd kits/langchain demo
 | `LLM_MODEL` | no | Overrides the default model (`claude-sonnet-4-6` / `gpt-4o-mini`). |
 | `NO_COLOR` | no | Set to disable colored output. Color is auto-disabled when output is piped or redirected. |
 
-The kit operates on Base mainnet only; there is no chain to configure.
+The kit pays on Base by default and falls back to Polygon when a service offers no Base payment option. The chain is selected automatically per service, so there is nothing to configure.
 
 ## Human-in-the-loop
 
