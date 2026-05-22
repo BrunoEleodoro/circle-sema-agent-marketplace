@@ -8,10 +8,9 @@ import {
   inspectService,
   payService,
   runCircle,
-} from '@circle-agent-stack-examples/circle-tools';
-import type { Chain } from '@circle-agent-stack-examples/circle-tools';
+} from '@agent-stack-ecosystem-kits/circle-tools';
 
-const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+const CHAIN = process.env['CIRCLE_CHAIN'] ?? 'BASE';
 
 export const fetchSkill = createTool({
   id: 'fetch_skill',
@@ -35,14 +34,14 @@ export const circleCreateWallet = createTool({
   id: 'circle_create_wallet',
   description: 'Create a new agent-controlled wallet on BASE via the Circle CLI.',
   inputSchema: z.object({}),
-  execute: async () => createWallet({ chain: CHAIN }),
+  execute: async () => createWallet(),
 });
 
 export const circleListWallets = createTool({
   id: 'circle_list_wallets',
   description: 'List existing agent wallets on BASE.',
   inputSchema: z.object({}),
-  execute: async () => listWallets({ chain: CHAIN }),
+  execute: async () => listWallets(),
 });
 
 export const circleGetBalance = createTool({
@@ -51,7 +50,7 @@ export const circleGetBalance = createTool({
   inputSchema: z.object({
     address: z.string().describe('The wallet address to check'),
   }),
-  execute: async (input) => getBalance({ address: input.address, chain: CHAIN }),
+  execute: async (input) => getBalance({ address: input.address }),
 });
 
 export const circleWalletFund = createTool({
@@ -137,7 +136,6 @@ export const circlePayService = createTool({
     payService({
       url: input.url,
       address: input.address,
-      chain: CHAIN,
       data: input.data,
     }),
 });
