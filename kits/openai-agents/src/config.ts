@@ -1,13 +1,12 @@
 import 'dotenv/config';
-import type { Chain } from '@circle-agent-stack-examples/circle-tools';
 
 export interface KitConfig {
-  chain: Chain;
+  chain: string;
   openaiApiKey: string;
 }
 
 export function loadConfig(): KitConfig {
-  const chain = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+  const chain = process.env['CIRCLE_CHAIN'] ?? 'BASE';
   const openaiApiKey = process.env['OPENAI_API_KEY'];
 
   if (!openaiApiKey) {

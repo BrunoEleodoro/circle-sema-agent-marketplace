@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { createInterface } from 'node:readline/promises';
 import { run, user } from '@openai/agents';
 import type { Agent, RunResult } from '@openai/agents';
-import { runCircle } from '@circle-agent-stack-examples/circle-tools';
+import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
 

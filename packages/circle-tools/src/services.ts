@@ -115,20 +115,6 @@ function unwrapData(raw: unknown): RawInspection {
   return o as RawInspection;
 }
 
-interface RawSearchItem {
-  resource?: string;
-  accepts?: Array<{ amount?: string; network?: string }>;
-  metadata?: {
-    description?: string;
-    provider?: { name?: string };
-  };
-}
-
-interface RawSearchEnvelope {
-  data?: { items?: RawSearchItem[] };
-  items?: RawSearchItem[];
-}
-
 /** `circle services search "<keyword>" --output json` */
 export async function searchServices(input: SearchServicesInput): Promise<Service[]> {
   const raw = runCircleJson<unknown>(['services', 'search', input.keyword, '--output', 'json'], {

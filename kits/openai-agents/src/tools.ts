@@ -8,10 +8,9 @@ import {
   inspectService,
   payService,
   runCircle,
-} from '@circle-agent-stack-examples/circle-tools';
-import type { Chain } from '@circle-agent-stack-examples/circle-tools';
+} from '@agent-stack-ecosystem-kits/circle-tools';
 
-const CHAIN = (process.env['CIRCLE_CHAIN'] ?? 'BASE') as Chain;
+const CHAIN = process.env['CIRCLE_CHAIN'] ?? 'BASE';
 
 export const fetchSkill = tool({
   name: 'fetch_skill',
@@ -33,14 +32,14 @@ export const circleCreateWallet = tool({
   name: 'circle_create_wallet',
   description: 'Create a new agent-controlled wallet on BASE via the Circle CLI.',
   parameters: z.object({}),
-  execute: async () => JSON.stringify(await createWallet({ chain: CHAIN })),
+  execute: async () => JSON.stringify(await createWallet()),
 });
 
 export const circleListWallets = tool({
   name: 'circle_list_wallets',
   description: 'List existing agent wallets on BASE.',
   parameters: z.object({}),
-  execute: async () => JSON.stringify(await listWallets({ chain: CHAIN })),
+  execute: async () => JSON.stringify(await listWallets()),
 });
 
 export const circleGetBalance = tool({
@@ -50,7 +49,7 @@ export const circleGetBalance = tool({
     address: z.string().describe('The wallet address to check'),
   }),
   execute: async ({ address }) =>
-    JSON.stringify(await getBalance({ address, chain: CHAIN })),
+    JSON.stringify(await getBalance({ address })),
 });
 
 export const circleWalletFund = tool({
@@ -123,5 +122,5 @@ export const circlePayService = tool({
     data: z.looseObject({}).describe('JSON payload to send to the service'),
   }),
   execute: async ({ url, address, data }) =>
-    JSON.stringify(await payService({ url, address, chain: CHAIN, data })),
+    JSON.stringify(await payService({ url, address, data })),
 });
