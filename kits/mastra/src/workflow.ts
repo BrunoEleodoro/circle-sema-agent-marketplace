@@ -2,6 +2,7 @@ import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
+import { loadConfig } from './config';
 
 const PROMPT =
   'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
@@ -75,7 +76,8 @@ const agentStep = createStep({
   inputSchema: z.object({ authenticated: z.literal(true) }),
   outputSchema: z.object({ summary: z.string() }),
   execute: async () => {
-    const agent = buildAgent();
+    const config = loadConfig();
+    const agent = buildAgent(config);
     const result = await agent.generate(PROMPT, { maxSteps: 30 });
     return { summary: result.text ?? '(no output)' };
   },

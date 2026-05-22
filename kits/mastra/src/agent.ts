@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core/agent';
+import type { KitConfig } from './config';
 import {
   fetchSkill,
   circleCreateWallet,
@@ -11,7 +12,7 @@ import {
   circlePayService,
 } from './tools';
 
-export function buildAgent(): Agent {
+export function buildAgent(config: KitConfig): Agent {
   return new Agent({
     id: 'circle-payment-agent',
     name: 'Circle Payment Agent',
@@ -28,7 +29,7 @@ export function buildAgent(): Agent {
       '7. If a free endpoint was found: call call_free_service on it with appropriate params and show the result to the developer. If all endpoints are paid and the wallet has sufficient USDC: call fetch_skill with https://agents.circle.com/skills/wallet-pay.md, then call circle_pay_service. Otherwise, explain that payment requires Gateway funding.',
       'After each tool call, briefly explain what happened and what it means for the developer.',
     ].join(' '),
-    model: 'openai/gpt-4.1',
+    model: config.model,
     tools: {
       fetchSkill,
       circleCreateWallet,

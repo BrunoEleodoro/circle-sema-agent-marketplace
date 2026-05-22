@@ -46,13 +46,13 @@ async function preflightAuth(): Promise<void> {
 async function main(): Promise<void> {
   console.log('[openai-agents-kit] starting Circle Agent Stack onboarding demo\n');
   const config = loadConfig();
-  console.log(`[openai-agents-kit] chain=${config.chain}`);
+  console.log(`[openai-agents-kit] chain=${config.chain} model=${config.model}`);
 
   console.log('[openai-agents-kit] checking authentication...');
   await preflightAuth();
   console.log('[openai-agents-kit] authenticated\n');
 
-  const agent = buildAgent();
+  const agent = buildAgent(config);
   const prompt = 'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
   console.log(`[openai-agents-kit] prompt: ${prompt}\n`);
   console.log('[openai-agents-kit] running agent...\n');
