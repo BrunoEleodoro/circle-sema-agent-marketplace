@@ -19,6 +19,14 @@ function log(line: string): void {
   console.log(kitLine(line));
 }
 
+/** True when an error string is an Anthropic "Overloaded" (HTTP 529). The
+ * underlying Claude Code subprocess retries 529 itself (those retries surface
+ * via the wired stderr); this only classifies the message once retries are
+ * exhausted so it reads as a transient provider hiccup, not a kit bug. */
+function isOverloaded(text: string): boolean {
+  return text.includes('529') || /overloaded/i.test(text);
+}
+
 /** Wrap a turn of user text as the streaming-input message the SDK expects. */
 function userMessage(text: string): SDKUserMessage {
   return { type: 'user', message: { role: 'user', content: text }, parent_tool_use_id: null };
@@ -47,6 +55,9 @@ function printResult(msg: Extract<SDKMessage, { type: 'result' }>): void {
     log(dim(`turn complete (${secs}s, $${msg.total_cost_usd.toFixed(4)})`));
   } else {
     log(red(`turn ended: ${msg.subtype} (${secs}s)`));
+    if (msg.errors.some(isOverloaded)) {
+      log(yellow('The LLM provider is overloaded (HTTP 529). This is transient; try again in a moment.'));
+    }
     for (const e of msg.errors) console.log(red(e));
   }
 }
@@ -156,6 +167,16 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error(kitLine(red(`FATAL: ${message}`)));
+  // A 529 means the LLM provider is overloaded after retries were exhausted: it
+  // is transient and not a kit bug, so say so plainly instead of dumping raw JSON.
+  const overloaded = (err as { status?: number })?.status === 529 || isOverloaded(message);
+  if (overloaded) {
+    console.error(
+      kitLine(red('FATAL: the LLM provider is overloaded (HTTP 529) and retries were exhausted.')),
+    );
+    console.error(kitLine(yellow('This is transient on the provider side. Re-run in a moment.')));
+  } else {
+    console.error(kitLine(red(`FATAL: ${message}`)));
+  }
   process.exit(1);
 });

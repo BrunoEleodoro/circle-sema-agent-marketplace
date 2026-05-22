@@ -162,6 +162,16 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error(kitLine(red(`FATAL: ${message}`)));
+  // A 529 means the LLM provider is overloaded after exhausting retries: it is
+  // transient and not a kit bug, so say so plainly instead of dumping raw JSON.
+  const overloaded = (err as { status?: number })?.status === 529 || message.includes('529');
+  if (overloaded) {
+    console.error(
+      kitLine(red('FATAL: the LLM provider is overloaded (HTTP 529) and retries were exhausted.')),
+    );
+    console.error(kitLine(yellow('This is transient on the provider side. Re-run in a moment.')));
+  } else {
+    console.error(kitLine(red(`FATAL: ${message}`)));
+  }
   process.exit(1);
 });
