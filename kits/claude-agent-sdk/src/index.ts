@@ -66,6 +66,7 @@ async function main(): Promise<void> {
   log('Autonomous Payment Agent demo starting');
   const config = loadConfig();
   log(`chain=BASE model=${config.model} auth=ANTHROPIC_API_KEY`);
+  log(dim('tip: type "exit" at any prompt to quit'));
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   // `exit` typed at ANY prompt (chat input or an approval [y/N]) halts the demo
