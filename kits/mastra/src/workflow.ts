@@ -2,6 +2,7 @@ import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
+import { loadConfig } from './config';
 import { withRetry } from './retry';
 
 const PROMPT =
@@ -76,7 +77,8 @@ const agentStep = createStep({
   inputSchema: z.object({ authenticated: z.literal(true) }),
   outputSchema: z.object({ summary: z.string() }),
   execute: async () => {
-    const agent = buildAgent();
+    const config = loadConfig();
+    const agent = buildAgent(config);
     const result = await withRetry(() => agent.generate(PROMPT, { maxSteps: 30 }), 'agent');
     return { summary: result.text ?? '(no output)' };
   },

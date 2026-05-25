@@ -1,4 +1,5 @@
 import { Agent } from '@openai/agents';
+import type { KitConfig } from './config';
 import {
   fetchSetupSkillTool,
   fetchSubSkillTool,
@@ -16,7 +17,7 @@ import {
   callFreeService,
 } from './tools';
 
-export function buildAgent(): Agent {
+export function buildAgent(config: KitConfig): Agent {
   return new Agent({
     name: 'Circle Payment Agent',
     instructions: [
@@ -32,7 +33,7 @@ export function buildAgent(): Agent {
       '7. If the wallet has sufficient USDC and the service is paid: call fetch_sub_skill with name="wallet-pay", ensure the wallet is deployed (call circle_deploy_wallet if needed), then call circle_pay_service with the method copied from circle_inspect_service. If the payment fails because Gateway balance is required, call circle_gateway_deposit for the same URL, then retry circle_pay_service.',
       'After each tool call, briefly explain what happened and what it means for the developer.',
     ].join(' '),
-    model: 'gpt-4.1',
+    model: config.model,
     tools: [
       fetchSetupSkillTool,
       fetchSubSkillTool,

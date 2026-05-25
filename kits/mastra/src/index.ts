@@ -18,7 +18,7 @@ async function ask(question: string): Promise<string> {
 async function main(): Promise<void> {
   console.log('[mastra-kit] starting Circle Agent Stack onboarding demo\n');
   const config = loadConfig();
-  console.log(`[mastra-kit] chain=${config.chain}\n`);
+  console.log(`[mastra-kit] chain=${config.chain} provider=${config.provider} model=${config.model}\n`);
 
   const run = await onboardingWorkflow.createRun();
   let result = await run.start({ inputData: {} });
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   console.log(summary);
 
   console.log('\n[mastra-kit] continue the conversation — type "exit" to quit\n');
-  const agent = buildAgent();
+  const agent = buildAgent(config);
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: INITIAL_PROMPT },
     { role: 'assistant', content: summary },
