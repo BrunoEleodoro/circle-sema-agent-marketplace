@@ -1,16 +1,18 @@
 import { runCircle, runCircleJson } from './cli';
+import { chainCli, chainRpcUrl, DEFAULT_CHAIN, type Chain } from './chains';
 import type { AgentWallet, TokenBalance, WalletBalance } from './types';
 
-/** The kit operates on Base mainnet only. */
-const CHAIN = 'BASE';
+/**
+ * Chain used when listing/creating wallets. Agent wallets share one SCA address
+ * across every EVM chain, so listing on Base returns the address that is also
+ * valid on Polygon.
+ */
+const WALLET_LIST_CHAIN = chainCli(DEFAULT_CHAIN);
 const EVM_ADDRESS_REGEX = /0x[a-fA-F0-9]{40}/;
 const TX_HASH_REGEX = /0x[a-fA-F0-9]{64}/;
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 /** Extra attempts for idempotent read commands when the network blips. */
 const READ_RETRIES = 3;
-
-/** Public Base JSON-RPC endpoint, used to detect Smart Contract Account deployment. */
-const BASE_RPC_URL = 'https://mainnet.base.org';
 
 /** After the bootstrap transfer, poll eth_getCode until the SCA appears. */
 const DEPLOY_POLL_INTERVAL_MS = 1_500;
@@ -18,10 +20,14 @@ const DEPLOY_POLL_TIMEOUT_MS = 45_000;
 
 export interface GetBalanceInput {
   address: string;
+  /** Chain to read the balance on. Defaults to Base. */
+  chain?: Chain;
 }
 
 export interface DeployWalletInput {
   address: string;
+  /** Chain to deploy / check the SCA on. Defaults to Base. */
+  chain?: Chain;
 }
 
 export interface DeployWalletResult {
@@ -72,7 +78,7 @@ function unwrap<T>(raw: { data?: T } | T): T {
 
 /** Creates a new agent-controlled wallet on Base via `circle wallet create`. */
 export async function createWallet(): Promise<AgentWallet> {
-  const out = runCircle(['wallet', 'create', '--chain', CHAIN, '--output', 'json']);
+  const out = runCircle(['wallet', 'create', '--chain', WALLET_LIST_CHAIN, '--output', 'json']);
   const trimmed = out.trim();
   let address: string | undefined;
   try {
@@ -80,7 +86,8 @@ export async function createWallet(): Promise<AgentWallet> {
     const wallets = raw.data?.wallets ?? [];
     // `circle wallet create` provisions one address across every chain; pick the
     // Base entry so the returned wallet is the Base address.
-    const match = wallets.find((w) => w.blockchain?.toUpperCase() === CHAIN) ?? wallets[0];
+    const match =
+      wallets.find((w) => w.blockchain?.toUpperCase() === WALLET_LIST_CHAIN) ?? wallets[0];
     address = match?.address;
   } catch {
     address = trimmed.match(EVM_ADDRESS_REGEX)?.[0];
@@ -94,7 +101,7 @@ export async function createWallet(): Promise<AgentWallet> {
 /** `circle wallet list --chain BASE --type agent --output json` */
 export async function listWallets(): Promise<AgentWallet[]> {
   const raw = runCircleJson<CircleEnvelope<RawWalletList>>(
-    ['wallet', 'list', '--chain', CHAIN, '--type', 'agent', '--output', 'json'],
+    ['wallet', 'list', '--chain', WALLET_LIST_CHAIN, '--type', 'agent', '--output', 'json'],
     { retries: READ_RETRIES },
   );
   const list = raw.data?.wallets ?? [];
@@ -104,7 +111,16 @@ export async function listWallets(): Promise<AgentWallet[]> {
 /** `circle wallet balance --address <addr> --chain <chain> --output json` */
 export async function getBalance(input: GetBalanceInput): Promise<WalletBalance> {
   const raw = runCircleJson<CircleEnvelope<RawBalance>>(
-    ['wallet', 'balance', '--address', input.address, '--chain', CHAIN, '--output', 'json'],
+    [
+      'wallet',
+      'balance',
+      '--address',
+      input.address,
+      '--chain',
+      chainCli(input.chain ?? DEFAULT_CHAIN),
+      '--output',
+      'json',
+    ],
     { retries: READ_RETRIES },
   );
   const rawTokens = raw.data?.balances ?? raw.data?.tokens ?? [];
@@ -149,7 +165,7 @@ function extractTxId(out: string): string | undefined {
  * the contract; only an outbound transaction does.
  */
 export async function isWalletDeployed(input: DeployWalletInput): Promise<boolean> {
-  const res = await fetch(BASE_RPC_URL, {
+  const res = await fetch(chainRpcUrl(input.chain ?? DEFAULT_CHAIN), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -180,8 +196,9 @@ export async function isWalletDeployed(input: DeployWalletInput): Promise<boolea
  */
 export async function deployWallet(input: DeployWalletInput): Promise<DeployWalletResult> {
   const { address } = input;
+  const chain = input.chain ?? DEFAULT_CHAIN;
 
-  if (await isWalletDeployed({ address })) {
+  if (await isWalletDeployed({ address, chain })) {
     return { address, deployed: true, alreadyDeployed: true };
   }
 
@@ -196,7 +213,7 @@ export async function deployWallet(input: DeployWalletInput): Promise<DeployWall
     '--address',
     address,
     '--chain',
-    CHAIN,
+    chainCli(chain),
     '--output',
     'json',
   ]);
@@ -208,7 +225,7 @@ export async function deployWallet(input: DeployWalletInput): Promise<DeployWall
   let deployed = false;
   while (Date.now() < deadline) {
     await sleep(DEPLOY_POLL_INTERVAL_MS);
-    if (await isWalletDeployed({ address })) {
+    if (await isWalletDeployed({ address, chain })) {
       deployed = true;
       break;
     }

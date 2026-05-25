@@ -7,7 +7,7 @@ import { buildAgent } from './agent';
 import { ensureLoggedIn } from './auth';
 import { loadConfig } from './config';
 import { SETUP_SKILL_URL } from './skill';
-import { bold, colorizeJson, green, heading, kitLine, red, yellow } from './theme';
+import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
   console.log(kitLine(line));
@@ -140,6 +140,7 @@ async function main(): Promise<void> {
   log('Autonomous Payment Agent demo starting');
   const config = loadConfig();
   log(`chain=BASE provider=${config.provider} model=${config.model}`);
+  log(dim('tip: type "exit" at any prompt to quit'));
 
   const agent = buildAgent(config);
 
