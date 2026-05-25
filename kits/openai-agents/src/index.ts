@@ -5,6 +5,7 @@ import type { Agent, RunResult } from '@openai/agents';
 import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
+import { withRetry } from './retry';
 
 async function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -57,7 +58,7 @@ async function main(): Promise<void> {
   console.log(`[openai-agents-kit] prompt: ${prompt}\n`);
   console.log('[openai-agents-kit] running agent...\n');
 
-  let result = await run(agent, prompt);
+  let result = await withRetry(() => run(agent, prompt), 'agent');
   result = await resolveInterruptions(result, agent);
   console.log(result.finalOutput ?? '(no output)');
 
@@ -65,7 +66,7 @@ async function main(): Promise<void> {
   while (true) {
     const input = await ask('You:');
     if (!input || input.toLowerCase() === 'exit') break;
-    result = await run(agent, [...result.history, user(input)]);
+    result = await withRetry(() => run(agent, [...result.history, user(input)]), 'agent');
     result = await resolveInterruptions(result, agent);
     console.log('\n' + (result.finalOutput ?? '(no output)') + '\n');
   }
@@ -93,7 +94,7 @@ async function resolveInterruptions(
         result.state.reject(interruption, { message: 'User declined.' });
       }
     }
-    result = await run(agent, result.state);
+    result = await withRetry(() => run(agent, result.state), 'agent');
   }
   return result;
 }

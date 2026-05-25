@@ -1,4 +1,11 @@
 import { runCircle, runCircleJson } from './cli';
+import {
+  CHAIN_PREFERENCE,
+  chainCli,
+  chainFromNetwork,
+  DEFAULT_CHAIN,
+  type Chain,
+} from './chains';
 import type {
   AcceptOption,
   FetchServiceResult,
@@ -8,8 +15,6 @@ import type {
   ServiceInspection,
 } from './types';
 
-/** The kit operates on Base mainnet only. */
-const CHAIN = 'BASE';
 const TX_HASH_REGEX = /0x[a-fA-F0-9]{64}/;
 /**
  * Request timeout for a paid call, in seconds. The CLI defaults to 30s, which is
@@ -46,6 +51,11 @@ export interface PayServiceInput {
    * JSON request body.
    */
   method?: string;
+  /**
+   * Chain to settle the payment on. Must be a chain the seller offers (see
+   * preferredChain). Defaults to Base.
+   */
+  chain?: Chain;
 }
 
 /**
@@ -181,21 +191,6 @@ export async function fetchService(input: FetchServiceInput): Promise<FetchServi
   };
 }
 
-/**
- * The only x402 `network` (CAIP-2) value the kit can pay: Base mainnet. Every
- * other network (Polygon, Solana, Ethereum, Arbitrum, ...) is reported as
- * unsupported rather than silently dropped.
- */
-// Base mainnet appears in x402 challenges under two identifier styles: the
-// CAIP-2 chain ID (`eip155:8453`) and the x402 short network name (`base`).
-// Sellers pick either, so both must be recognised as the same chain.
-const BASE_NETWORKS = new Set(['eip155:8453', 'base']);
-
-/** Whether an x402 `accepts[].network` value names Base mainnet. */
-function isBaseNetwork(network: string): boolean {
-  return BASE_NETWORKS.has(network.toLowerCase());
-}
-
 /** Loose shape of one entry in an x402 402-challenge `accepts[]` array. */
 interface Raw402Accept {
   network?: string;
@@ -255,9 +250,9 @@ async function readAccepts(res: Response): Promise<Raw402Accept[] | null> {
  * An unpaid GET to an x402 resource returns HTTP 402 with an `accepts` array.
  * Each entry is either vanilla x402 or Gateway-batched. The Gateway scheme is
  * identified by `extra.name === 'GatewayWalletBatched'`, NOT the top-level
- * `scheme` field (which reads `exact` for both). Only Base entries are kept
- * (matched by CAIP-2 id `eip155:8453` or the x402 short name `base`); any other
- * network is reported as unsupported.
+ * `scheme` field (which reads `exact` for both). Entries on a supported chain
+ * (Base or Polygon, matched by CAIP-2 id or x402 short name) are kept and
+ * tagged with their chain; any other network is reported as unsupported.
  */
 export async function getServiceAccepts(url: string, method = 'GET'): Promise<ServiceAccepts> {
   // Probe with the SAME method the payment will use. An x402 challenge is bound
@@ -294,21 +289,39 @@ export async function getServiceAccepts(url: string, method = 'GET'): Promise<Se
   const unsupported = new Set<string>();
   for (const a of accepts) {
     const network = a.network ?? '';
-    if (!isBaseNetwork(network)) {
+    const chain = network ? chainFromNetwork(network) : null;
+    if (!chain) {
       if (network) unsupported.add(network);
       continue;
     }
     options.push({
       kind: a.extra?.name === 'GatewayWalletBatched' ? 'gateway' : 'vanilla',
+      chain,
       amountAtomic: a.amount ?? '',
     });
   }
   return { url, options, unsupportedNetworks: [...unsupported] };
 }
 
-/** Whether the service requires a Circle Gateway (batched) payment on Base. */
-export function sellerRequiresGateway(accepts: ServiceAccepts): boolean {
-  return accepts.options.some((o) => o.kind === 'gateway');
+/**
+ * Pick the chain to pay a service on: the first chain in CHAIN_PREFERENCE the
+ * seller offers, so Base wins when available and Polygon is the fallback.
+ * Returns null when the seller offers no supported chain.
+ */
+export function preferredChain(accepts: ServiceAccepts): Chain | null {
+  for (const chain of CHAIN_PREFERENCE) {
+    if (accepts.options.some((o) => o.chain === chain)) return chain;
+  }
+  return null;
+}
+
+/**
+ * Whether the service requires a Circle Gateway (batched) payment on the given
+ * chain. The CLI auto-routes to Gateway whenever the seller advertises it on
+ * the chain being paid, so a single Gateway option is enough to require it.
+ */
+export function sellerRequiresGateway(accepts: ServiceAccepts, chain: Chain): boolean {
+  return accepts.options.some((o) => o.chain === chain && o.kind === 'gateway');
 }
 
 /**
@@ -451,7 +464,7 @@ export async function payService(input: PayServiceInput): Promise<PaymentResult>
     '--address',
     input.address,
     '--chain',
-    CHAIN,
+    chainCli(input.chain ?? DEFAULT_CHAIN),
     '--method',
     method,
     '--timeout',

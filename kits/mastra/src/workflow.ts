@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
+import { withRetry } from './retry';
 
 const PROMPT =
   'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
@@ -78,7 +79,7 @@ const agentStep = createStep({
   execute: async () => {
     const config = loadConfig();
     const agent = buildAgent(config);
-    const result = await agent.generate(PROMPT, { maxSteps: 30 });
+    const result = await withRetry(() => agent.generate(PROMPT, { maxSteps: 30 }), 'agent');
     return { summary: result.text ?? '(no output)' };
   },
 });
