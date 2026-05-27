@@ -58,6 +58,13 @@ export interface GatewayDepositResult {
   amount: string;
   /** Circle transaction id / on-chain hash of the deposit, when one is parsed. */
   txId?: string;
+  /**
+   * The CLI `--method` actually used. `'direct'` deposits source==destination
+   * on the requested chain (13-19 min). `'eco'` is fast (~30s) but is fixed by
+   * the CLI: source=BASE, destination=Polygon Gateway, so it is only valid for
+   * Polygon-settling Gateway sellers.
+   */
+  method?: 'direct' | 'eco';
 }
 
 /** Result of a plain, unpaid GET of a service endpoint. */

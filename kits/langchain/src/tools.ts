@@ -411,10 +411,20 @@ export function buildTools() {
         return err(e);
       }
 
+      // Pick deposit method: Polygon Gateway sellers get the fast (~30s) eco
+      // method, which sources Base USDC and lands on Polygon. Base Gateway
+      // sellers must use direct (13-19 min) because eco's destination is
+      // hardcoded to Polygon by the CLI.
+      const depositMethod: circle.GatewayDepositMethod = chain === 'POLYGON' ? 'eco' : 'direct';
       try {
-        const result = await circle.gatewayDeposit({ address, amount, chain });
+        const result = await circle.gatewayDeposit({
+          address,
+          amount,
+          chain,
+          method: depositMethod,
+        });
         log(
-          `circle_gateway_deposit ← ${result.amount} USDC on ${circle.chainLabel(chain)} tx=${result.txId ?? 'n/a'}`,
+          `circle_gateway_deposit ← ${result.amount} USDC on ${circle.chainLabel(chain)} via ${depositMethod} tx=${result.txId ?? 'n/a'}`,
         );
         return ok(result);
       } catch (e) {
@@ -427,8 +437,10 @@ export function buildTools() {
       description:
         "Fund the wallet's Circle Gateway balance so it can pay a seller that requires " +
         'Gateway (batched) x402 payments. Pass the service URL; the kit confirms the seller ' +
-        'requires Gateway and picks the chain (Base preferred, else Polygon), then makes a direct ' +
-        'deposit on that chain (slower, 13-19 min, and it consumes gas on that chain). Spends USDC ' +
+        'requires Gateway and picks the chain (Base preferred, else Polygon), then deposits on ' +
+        'that chain. Method auto-selected: Polygon sellers use the fast eco path (~30s, no gas on ' +
+        'source, USDC sourced from the wallet\'s Base USDC balance and landed in the Polygon ' +
+        'Gateway pool); Base sellers use direct (13-19 min, consumes gas on Base). Spends USDC ' +
         '(the deposit amount plus fee) and pauses for human approval. After it succeeds, retry ' +
         'circle_pay_service for the same URL.',
       schema: z.object({
