@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { createInterface } from 'node:readline/promises';
 import type { CoreMessage } from 'ai';
 
-import { ensureLoggedIn } from './auth';
+import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 import { loadConfig, type KitConfig } from './config';
 import { runTurn } from './agent';
 import { buildTools, type CircleTools } from './tools';
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     // ── Auth ─────────────────────────────────────────────────────────────────
     // Check the Circle CLI session before running the agent. Logs in with email
     // + OTP if needed; never auto-accepts Circle Terms of Use.
-    await ensureLoggedIn(ask, log);
+    await ensureSession({ ask, log, bold });
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     // The first turn is driven by the Circle setup skill, not a system prompt.

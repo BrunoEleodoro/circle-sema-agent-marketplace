@@ -15,6 +15,8 @@ import {
   payService,
   getServiceAccepts,
   sellerRequiresGateway,
+  ensureSession,
+  logout,
   runCircle,
   DEFAULT_CHAIN,
   type Chain,
@@ -70,6 +72,53 @@ export function buildTools(ask: AskFn) {
   const subSkillCatalog = SUB_SKILL_NAMES.map((n) => `- ${n} → ${SUB_SKILLS[n]}`).join('\n');
 
   return {
+    // ── Auth tools ────────────────────────────────────────────────────────────
+
+    circle_login: tool({
+      description:
+        'Log in to the Circle agent wallet via email + OTP, or confirm an existing session. ' +
+        'Use this whenever the user wants to log in or log back in, or when another tool fails ' +
+        'because the session is missing or expired. The kit prompts the user in the terminal ' +
+        'for their email and the OTP from their inbox (never stored); it does not accept the ' +
+        'Terms of Use on their behalf. If a session is already valid this is a no-op that ' +
+        'reports so. After it succeeds, retry whatever the user originally asked for.',
+      parameters: z.object({}),
+      execute: async () => {
+        log('circle_login');
+        try {
+          const result = await ensureSession({ ask, log, bold });
+          const message =
+            result.status === 'already-valid'
+              ? 'Already logged in; the Circle session is valid.'
+              : 'Logged in. The Circle session is now valid.';
+          log(`circle_login ← ${result.status}`);
+          return { status: result.status, message };
+        } catch (e) {
+          log(`circle_login ✗ ${(e as Error).message}`);
+          return toolError(e);
+        }
+      },
+    }),
+
+    circle_logout: tool({
+      description:
+        'Log out of the Circle agent wallet and clear the stored credentials. Use this when the ' +
+        'user wants to log out or switch accounts. Safe to call when no session exists (reports ' +
+        'that nothing was logged out). After this, the user must circle_login again before any ' +
+        'wallet or payment tool will work.',
+      parameters: z.object({}),
+      execute: async () => {
+        log('circle_logout');
+        try {
+          logout(log);
+          return { message: 'Logged out; Circle credentials cleared.' };
+        } catch (e) {
+          log(`circle_logout ✗ ${(e as Error).message}`);
+          return toolError(e);
+        }
+      },
+    }),
+
     // ── Skill fetchers ────────────────────────────────────────────────────────
 
     fetch_setup_skill: tool({
