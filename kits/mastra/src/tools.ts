@@ -14,8 +14,11 @@ import {
   fetchService,
   payService,
   getServiceAccepts,
+  preferredChain,
   sellerRequiresGateway,
+  chainLabel,
   runCircle,
+  type Chain,
 } from '@agent-stack-ecosystem-kits/circle-tools';
 import {
   fetchSetupSkill,
@@ -114,14 +117,15 @@ export const circleListWallets = createTool({
 
 export const circleGetBalance = createTool({
   id: 'circle_get_balance',
-  description: 'Check USDC and token balances for an agent wallet on BASE.',
+  description: 'Check USDC and token balances for an agent wallet. Defaults to Base; pass chain "POLYGON" to read the Polygon balance.',
   inputSchema: z.object({
     address: z.string().describe('The wallet address to check'),
+    chain: chainEnum.optional().describe('Chain to read the balance on. Defaults to BASE.'),
   }),
   execute: async (input) => {
-    log(`circle_get_balance address=${input.address}`);
+    log(`circle_get_balance address=${input.address} chain=${input.chain ?? 'BASE'}`);
     try {
-      const result = await getBalance({ address: input.address });
+      const result = await getBalance({ address: input.address, chain: input.chain as Chain | undefined });
       const tokens = (result as { tokens: Array<{ symbol?: string; amount?: string }> }).tokens;
       const usdc = tokens.find((t) => t.symbol?.toUpperCase() === 'USDC');
       log(`circle_get_balance ← USDC=${usdc?.amount ?? '0'} (${tokens.length} token(s))`);
@@ -148,7 +152,7 @@ export const circleWalletFund = createTool({
         '--address',
         input.address,
         '--chain',
-        CHAIN,
+        'BASE',
         '--output',
         'json',
       ]);
@@ -164,18 +168,21 @@ export const circleWalletFund = createTool({
 export const circleDeployWallet = createTool({
   id: 'circle_deploy_wallet',
   description:
-    `Deploy a Base agent wallet's Smart Contract Account on-chain via a one-time, ` +
+    `Deploy an agent wallet's Smart Contract Account on-chain via a one-time, ` +
     'zero-value self-transfer. A freshly created wallet is counterfactual: it can receive ' +
-    'USDC but cannot sign x402 payments until deployed. Idempotent and gas-abstracted ' +
-    '(spends nothing), and safe to call on an already-deployed wallet, where it sends no ' +
-    'transaction. Call this before circle_pay_service for any wallet that has never sent a transaction.',
+    'USDC but cannot sign x402 payments until deployed. Deployment is per-chain, so deploy on ' +
+    'the chain the payment will settle on (defaults to Base; pass chain "POLYGON" for a ' +
+    'Polygon-only service). Idempotent and gas-abstracted (spends nothing), and safe to call ' +
+    'on an already-deployed wallet, where it sends no transaction. Call this before ' +
+    'circle_pay_service for any wallet that has never sent a transaction on that chain.',
   inputSchema: z.object({
     address: z.string().describe('Agent wallet address to deploy (0x...).'),
+    chain: chainEnum.optional().describe('Chain to deploy the SCA on. Defaults to BASE.'),
   }),
   execute: async (input) => {
-    log(`circle_deploy_wallet address=${input.address}`);
+    log(`circle_deploy_wallet address=${input.address} chain=${input.chain ?? 'BASE'}`);
     try {
-      const result = await deployWallet({ address: input.address });
+      const result = await deployWallet({ address: input.address, chain: input.chain as Chain | undefined });
       if (result.alreadyDeployed) {
         log(`circle_deploy_wallet ← already deployed`);
       } else if (result.deployed) {
@@ -295,15 +302,17 @@ export const circleInspectService = createTool({
 export const circleGetGatewayBalance = createTool({
   id: 'circle_get_gateway_balance',
   description:
-    "Check the wallet's Base Circle Gateway balance: the off-chain batched-payment pool, " +
-    'separate from the on-chain wallet balance reported by circle_get_balance.',
+    "Check the wallet's Circle Gateway balance: the off-chain batched-payment pool, " +
+    'separate from the on-chain wallet balance reported by circle_get_balance. Defaults to ' +
+    'Base; pass chain "POLYGON" to read the Polygon Gateway balance.',
   inputSchema: z.object({
     address: z.string().describe('EVM wallet address (0x...).'),
+    chain: chainEnum.optional().describe('Chain to read the Gateway balance on. Defaults to BASE.'),
   }),
   execute: async (input) => {
-    log(`circle_get_gateway_balance address=${input.address}`);
+    log(`circle_get_gateway_balance address=${input.address} chain=${input.chain ?? 'BASE'}`);
     try {
-      const result = await gatewayBalance({ address: input.address });
+      const result = await gatewayBalance({ address: input.address, chain: input.chain as Chain | undefined });
       log(`circle_get_gateway_balance ← total=${result.total} USDC`);
       return result;
     } catch (e) {
@@ -316,11 +325,12 @@ export const circleGetGatewayBalance = createTool({
 export const circlePayService = createTool({
   id: 'circle_pay_service',
   description:
-    'Pay for an x402 service with a Circle USDC payment on Base. The kit reads the ' +
+    'Pay for an x402 service with a Circle USDC payment. The kit reads the ' +
     "service's published payment options and pays under the right scheme automatically: " +
-    'vanilla x402, or Circle Gateway when the seller requires it. If the seller requires ' +
-    'Gateway and the wallet has no Gateway balance, this fails with an actionable ' +
-    'message: call circle_gateway_deposit for the same URL, then retry circle_pay_service. ' +
+    'vanilla x402, or Circle Gateway when the seller requires it. It also picks the chain: ' +
+    'Base when the seller offers it, otherwise Polygon (the kit supports Base and Polygon). ' +
+    'If the seller requires Gateway and the wallet has no Gateway balance, this fails with an ' +
+    'actionable message: call circle_gateway_deposit for the same URL, then retry circle_pay_service. ' +
     'Pass the `method` from circle_inspect_service: a GET service reads data as URL ' +
     'query parameters, a POST/PUT/PATCH service reads it as a JSON body. Sending the wrong ' +
     'one makes the server see no input and still spends USDC, so always copy the inspected method.',
@@ -345,29 +355,36 @@ export const circlePayService = createTool({
     const httpMethod = (input.method ?? 'GET').toUpperCase();
     log(`circle_pay_service url=${input.url} from=${input.address} method=${httpMethod}`);
 
-    // Confirm the seller publishes a Base payment option before paying.
+    // Confirm the seller publishes a payment option on a chain the kit can pay,
+    // and pick which chain to use. Base is preferred; Polygon is the fallback
+    // when the seller offers no Base option.
+    let chain: Chain;
     try {
       const accepts = await getServiceAccepts(input.url, httpMethod);
-      if (accepts.options.length === 0) {
+      const picked = preferredChain(accepts);
+      if (!picked) {
         const offered = accepts.unsupportedNetworks.join(', ') || 'none';
-        log(`circle_pay_service ✗ no Base pay option (seller offers: ${offered})`);
+        log(`circle_pay_service ✗ no supported pay option (seller offers: ${offered})`);
         throw new Error(
-          `This service offers no Base payment option, the only chain the kit supports. ` +
+          `This service offers no payment option on a chain the kit supports (Base or Polygon). ` +
             `Seller networks: ${offered}.`,
         );
       }
+      chain = picked;
     } catch (e) {
       log(`circle_pay_service ✗ ${(e as Error).message}`);
       throw e;
     }
 
     // Pre-flight: a counterfactual (undeployed) SCA cannot sign an x402 payment.
+    // Deployment is per-chain, so check the chain being paid.
     try {
-      if (!(await isWalletDeployed({ address: input.address }))) {
-        log(`circle_pay_service ✗ wallet not deployed`);
+      if (!(await isWalletDeployed({ address: input.address, chain }))) {
+        log(`circle_pay_service ✗ wallet not deployed on ${chain}`);
         throw new Error(
-          `Wallet ${input.address} is not deployed on-chain yet, so it cannot sign x402 ` +
-            'payments. Call circle_deploy_wallet with this address first, then retry circle_pay_service.',
+          `Wallet ${input.address} is not deployed on-chain on ${chainLabel(chain)} yet, so it ` +
+            `cannot sign x402 payments there. Call circle_deploy_wallet with this address and ` +
+            `chain "${chain}" first, then retry circle_pay_service.`,
         );
       }
     } catch (e) {
@@ -385,11 +402,12 @@ export const circlePayService = createTool({
         address: input.address,
         data: input.data,
         method: httpMethod,
+        chain,
       });
       const tx = (result as { txHash?: string }).txHash
         ? ` txHash=${(result as { txHash?: string }).txHash}`
         : '';
-      log(`circle_pay_service ← paid${tx}`);
+      log(`circle_pay_service ← paid on ${chainLabel(chain)}${tx}`);
       return result;
     } catch (e) {
       log(`circle_pay_service ✗ ${(e as Error).message}`);
@@ -401,11 +419,11 @@ export const circlePayService = createTool({
 export const circleGatewayDeposit = createTool({
   id: 'circle_gateway_deposit',
   description:
-    "Fund the wallet's Base Circle Gateway balance so it can pay a seller that requires " +
+    "Fund the wallet's Circle Gateway balance so it can pay a seller that requires " +
     'Gateway (batched) x402 payments. Pass the service URL; the kit confirms the seller ' +
-    'requires Gateway, then makes a direct Base deposit (slower, 13-19 min, and it ' +
-    'consumes gas on Base). Spends USDC (the deposit amount plus fee). ' +
-    'After it succeeds, retry circle_pay_service for the same URL.',
+    'requires Gateway and picks the chain (Base preferred, else Polygon), then makes a direct ' +
+    'deposit on that chain (slower, 13-19 min, and it consumes gas on that chain). Spends USDC ' +
+    '(the deposit amount plus fee). After it succeeds, retry circle_pay_service for the same URL.',
   inputSchema: z.object({
     url: z.string().describe('The service URL this deposit is for.'),
     address: z.string().describe('Agent wallet address to deposit from (0x...).'),
@@ -428,23 +446,29 @@ export const circleGatewayDeposit = createTool({
   execute: async (input) => {
     const httpMethod = (input.method ?? 'GET').toUpperCase();
     log(`circle_gateway_deposit url=${input.url} address=${input.address} amount=${input.amount}`);
+    // Only deposit when the seller actually requires a Gateway payment; for a
+    // vanilla-x402 seller a deposit would not help. Deposit on the chain the
+    // payment will settle on (Base preferred, else Polygon).
+    let chain: Chain;
     try {
       const accepts = await getServiceAccepts(input.url, httpMethod);
-      if (!sellerRequiresGateway(accepts)) {
-        log(`circle_gateway_deposit ✗ seller offers no Base Gateway option`);
+      const picked = preferredChain(accepts);
+      if (!picked || !sellerRequiresGateway(accepts, picked)) {
+        log(`circle_gateway_deposit ✗ seller offers no Gateway option on a supported chain`);
         throw new Error(
-          `${input.url} does not require a Base Gateway payment, so a Gateway deposit would not ` +
-            'help. Pay it with circle_pay_service directly.',
+          `${input.url} does not require a Circle Gateway payment on a chain the kit supports, so a ` +
+            'Gateway deposit would not help. Pay it with circle_pay_service directly.',
         );
       }
+      chain = picked;
     } catch (e) {
       log(`circle_gateway_deposit ✗ ${(e as Error).message}`);
       throw e;
     }
 
     try {
-      const result = await gatewayDeposit({ address: input.address, amount: input.amount });
-      log(`circle_gateway_deposit ← ${result.amount} USDC tx=${result.txId ?? 'n/a'}`);
+      const result = await gatewayDeposit({ address: input.address, amount: input.amount, chain });
+      log(`circle_gateway_deposit ← ${result.amount} USDC on ${chainLabel(chain)} tx=${result.txId ?? 'n/a'}`);
       return result;
     } catch (e) {
       log(`circle_gateway_deposit ✗ ${(e as Error).message}`);
