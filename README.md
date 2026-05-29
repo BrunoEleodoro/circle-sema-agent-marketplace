@@ -21,16 +21,15 @@ Open-source example projects integrating the [Circle Agent Stack](https://develo
 
 ```
 agent-stack-ecosystem-kits/
-├── packages/
-│   └── circle-tools/         # shared, framework-agnostic
-└── kits/
-    ├── mastra/
-    ├── claude-agent-sdk/
-    ├── openai-agents/
-    ├── langchain/
-    ├── vercel-ai/
-    └── google-adk/
-    
+├── kits/
+│   ├── claude-agent-sdk/
+│   ├── google-adk/
+│   ├── langchain/
+│   ├── mastra/
+│   ├── openai-agents/
+│   └── vercel-ai/
+└── packages/
+    └── circle-tools/         # shared, framework-agnostic
 ```
 
 ## Prerequisites
