@@ -2,9 +2,9 @@ import { createInterface } from 'node:readline/promises';
 
 import { InMemoryRunner, isFinalResponse, LogLevel, setLogLevel, type Event } from '@google/adk';
 import type { Content } from '@google/genai';
+import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildAgent, type ApprovalFn } from './agent';
-import { ensureLoggedIn } from './auth';
 import { loadConfig } from './config';
 import { SETUP_SKILL_URL } from './skill';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
   // Inline auth: ensure the Circle CLI has a valid agent session before the
   // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
   // reported as a manual step (the kit never accepts the Terms for the user).
-  await ensureLoggedIn(ask, log);
+  await ensureSession({ ask, log, bold });
 
   // One session for the whole conversation: the InMemorySessionService is the
   // ADK-native checkpointer, so the agent keeps full context across the

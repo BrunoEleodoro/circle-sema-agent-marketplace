@@ -2,9 +2,9 @@ import { createInterface } from 'node:readline/promises';
 
 import { HumanMessage } from '@langchain/core/messages';
 import { Command } from '@langchain/langgraph';
+import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildAgent } from './agent';
-import { ensureLoggedIn } from './auth';
 import { loadConfig } from './config';
 import { SETUP_SKILL_URL } from './skill';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
@@ -176,7 +176,7 @@ async function main(): Promise<void> {
   // Inline auth: make sure the CLI has a valid agent session before the agent
   // runs. Logs in with email + OTP if needed; a pending Terms gate is reported
   // as a manual step (the kit never accepts the Terms for the user).
-  await ensureLoggedIn(ask, log);
+  await ensureSession({ ask, log, bold });
 
   // Built after `ask` exists: the agent's circle_login tool prompts for email +
   // OTP through it to recover a logged-out session mid-conversation.
