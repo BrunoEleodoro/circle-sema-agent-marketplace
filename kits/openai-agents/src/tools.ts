@@ -5,6 +5,7 @@ import {
   listWallets,
   getBalance,
   deployWallet,
+  fundWalletFiat,
   isWalletDeployed,
   gatewayBalance,
   gatewayDeposit,
@@ -29,6 +30,7 @@ import {
 } from './skill';
 import { toolLine } from './theme';
 
+const CHAIN = process.env['CIRCLE_CHAIN'] ?? 'BASE';
 const chainEnum = z.enum(['BASE', 'POLYGON']);
 
 function log(line: string): void {
@@ -182,6 +184,38 @@ export const circleDeployWallet = tool({
       return JSON.stringify(result);
     } catch (e) {
       log(`circle_deploy_wallet ✗ ${(e as Error).message}`);
+      throw e;
+    }
+  },
+});
+
+export const fundFiatTool = tool({
+  name: 'circle_fund_fiat',
+  description:
+    'Fund a wallet with a fiat (card / bank) purchase via the Transak on-ramp. ' +
+    'Returns a Transak `url` to give the user as a link to open: they complete the ' +
+    'purchase there and the tokens deposit to the wallet on the chosen chain (defaults ' +
+    'to Base). This tool only generates the URL and moves no USDC itself, so it needs ' +
+    'no approval; the user pays inside the on-ramp. Use this when the user wants to buy ' +
+    'USDC with money they do not yet hold in crypto. After the user reports the purchase ' +
+    'complete, confirm with circle_get_balance. Mainnet only.',
+  parameters: z.object({
+    address: z.string().describe('Destination agent wallet address (0x...).'),
+    amount: z.number().positive().describe('Amount of token to buy, in human units (e.g. 10 for $10 of USDC).'),
+    chain: chainEnum.optional().describe('Chain the funds deposit on. Defaults to BASE.'),
+    token: z
+      .enum(['usdc', 'eurc', 'eth', 'native'])
+      .optional()
+      .describe('Token to buy. Defaults to usdc.'),
+  }),
+  execute: async ({ address, amount, chain, token }) => {
+    log(`circle_fund_fiat address=${address} amount=${amount} chain=${chain ?? 'BASE'} token=${token ?? 'usdc'}`);
+    try {
+      const result = await fundWalletFiat({ address, amount, chain, token, open: true });
+      log(`circle_fund_fiat ← ${preview(result.url, 80)}`);
+      return JSON.stringify(result);
+    } catch (e) {
+      log(`circle_fund_fiat ✗ ${(e as Error).message}`);
       throw e;
     }
   },

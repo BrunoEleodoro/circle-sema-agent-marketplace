@@ -46,7 +46,7 @@ async function main(): Promise<void> {
 
   console.log('\n[mastra-kit] continue the conversation — type "exit" to quit\n');
   const agent = buildAgent(config);
-  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+  const messages: Array<{ role: 'user'; content: string } | { role: 'assistant'; content: string }> = [
     { role: 'user', content: INITIAL_PROMPT },
     { role: 'assistant', content: summary },
   ];

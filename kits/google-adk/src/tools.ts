@@ -77,9 +77,6 @@ const fetchSubSkillTool = new FunctionTool({
   },
 });
 
-// DEBUG: pin list to a single wallet to conserve free-tier model quota.
-const DEBUG_WALLET = '0xebef2f78a2843bdf01268d93b1c263deecfb75ef';
-
 const listAgentWallets = new FunctionTool({
   name: 'circle_list_wallets',
   description: 'List existing Circle agent wallets on Base. Returns an array of { address }.',
@@ -88,11 +85,8 @@ const listAgentWallets = new FunctionTool({
     log(`circle_list_wallets`);
     try {
       const result = await circle.listWallets();
-      // log(`circle_list_wallets ← ${result.length} wallet(s)`);
-      // return ok({ wallets: result });
-      const filtered = result.filter((w) => w.address.toLowerCase() === DEBUG_WALLET.toLowerCase());
-      log(`circle_list_wallets ← ${filtered.length} wallet(s) (DEBUG: pinned to ${DEBUG_WALLET})`);
-      return ok({ wallets: filtered });
+      log(`circle_list_wallets ← ${result.length} wallet(s)`);
+      return ok({ wallets: result });
     } catch (e) {
       log(`circle_list_wallets ✗ ${(e as Error).message}`);
       return err(e);
@@ -169,6 +163,43 @@ const deployWalletTool = new FunctionTool({
       return ok(result);
     } catch (e) {
       log(`circle_deploy_wallet ✗ ${(e as Error).message}`);
+      return err(e);
+    }
+  },
+});
+
+const fundFiatTool = new FunctionTool({
+  name: 'circle_fund_fiat',
+  description:
+    'Fund a wallet with a fiat (card / bank) purchase via the Transak on-ramp. ' +
+    'Returns a Transak `url` to give the user as a link to open: they complete the ' +
+    'purchase there and the tokens deposit to the wallet on the chosen chain (defaults ' +
+    'to Base). This tool only generates the URL and moves no USDC itself, so it needs ' +
+    'no approval; the user pays inside the on-ramp. Use this when the user wants to buy ' +
+    'USDC with money they do not yet hold in crypto. After the user reports the purchase ' +
+    'complete, confirm with circle_get_balance. Mainnet only.',
+  parameters: z.object({
+    address: z.string().describe('Destination agent wallet address (0x...).'),
+    amount: z
+      .number()
+      .refine((v) => v > 0, 'amount must be greater than 0')
+      .describe('Amount of token to buy, in human units (e.g. 10 for $10 of USDC).'),
+    chain: chainEnum.optional().describe('Chain the funds deposit on. Defaults to BASE.'),
+    token: z
+      .enum(['usdc', 'eurc', 'eth', 'native'])
+      .optional()
+      .describe('Token to buy. Defaults to usdc.'),
+  }),
+  execute: async ({ address, amount, chain, token }) => {
+    log(`circle_fund_fiat address=${address} amount=${amount} chain=${chain ?? 'BASE'} token=${token ?? 'usdc'}`);
+    try {
+      // Local interactive demo: open the Transak page in the user's browser so
+      // they can complete the purchase. Best-effort and a no-op on headless.
+      const result = await circle.fundWalletFiat({ address, amount, chain, token, open: true });
+      log(`circle_fund_fiat ← ${preview(result.url, 80)}`);
+      return ok(result);
+    } catch (e) {
+      log(`circle_fund_fiat ✗ ${(e as Error).message}`);
       return err(e);
     }
   },
@@ -457,6 +488,7 @@ export function buildTools() {
     getWalletBalance,
     getGatewayBalance,
     deployWalletTool,
+    fundFiatTool,
     searchServices,
     inspectService,
     fetchServiceTool,

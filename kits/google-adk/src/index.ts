@@ -44,17 +44,25 @@ async function main(): Promise<void> {
   log(`chain=BASE model=${config.model} auth=GOOGLE_API_KEY`);
   log(dim('tip: type "exit" at any prompt to quit'));
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // Open readline only for the duration of a single question. Keeping it open
+  // across the whole session would leave it attached to the TTY in terminal
+  // mode while the agent streams, where any keystroke (or a stdout write racing
+  // its line-refresh) repaints its prompt mid-output. Open/close per prompt so
+  // readline never owns the TTY during streaming.
   // `exit` typed at ANY prompt (chat input or an approval [y/N]) halts the demo
   // immediately, before the answer reaches the caller.
   const ask = async (q: string): Promise<string> => {
-    const answer = await rl.question(q);
-    if (answer.trim().toLowerCase() === 'exit') {
-      log('exit, halting.');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question(q);
+      if (answer.trim().toLowerCase() === 'exit') {
+        log('exit, halting.');
+        process.exit(0);
+      }
+      return answer;
+    } finally {
       rl.close();
-      process.exit(0);
     }
-    return answer;
   };
 
   // Human-in-the-loop, the ADK-native mirror of LangChain's interruptOn: the
@@ -77,51 +85,47 @@ async function main(): Promise<void> {
     `Run curl -sL ${SETUP_SKILL_URL}, ` +
     'and use the returned setup instructions to set up my agent wallet.';
 
-  try {
-    // Inline auth: ensure the Circle CLI has a valid agent session before the
-    // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
-    // reported as a manual step (the kit never accepts the Terms for the user).
-    await ensureLoggedIn(ask, log);
+  // Inline auth: ensure the Circle CLI has a valid agent session before the
+  // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
+  // reported as a manual step (the kit never accepts the Terms for the user).
+  await ensureLoggedIn(ask, log);
 
-    // One session for the whole conversation: the InMemorySessionService is the
-    // ADK-native checkpointer, so the agent keeps full context across the
-    // approval pause and every chat turn.
-    const session = await runner.sessionService.createSession({
-      appName: APP_NAME,
+  // One session for the whole conversation: the InMemorySessionService is the
+  // ADK-native checkpointer, so the agent keeps full context across the
+  // approval pause and every chat turn.
+  const session = await runner.sessionService.createSession({
+    appName: APP_NAME,
+    userId: USER_ID,
+  });
+
+  log('invoking agent ...');
+  let input: Content = userMessage(bootstrapPrompt);
+
+  while (true) {
+    for await (const event of runner.runAsync({
       userId: USER_ID,
-    });
-
-    log('invoking agent ...');
-    let input: Content = userMessage(bootstrapPrompt);
-
-    while (true) {
-      for await (const event of runner.runAsync({
-        userId: USER_ID,
-        sessionId: session.id,
-        newMessage: input,
-      })) {
-        if (event.partial) continue;
-        if (event.errorCode) {
-          log(red(`model error ${event.errorCode}: ${event.errorMessage ?? '(no message)'}`));
-          continue;
-        }
-        if (!isFinalResponse(event)) continue;
-        const text = extractText(event);
-        if (!text) continue;
-        console.log(`\n${heading('--- agent reply ---')}\n`);
-        console.log(text);
-        console.log(`\n${heading('-------------------')}`);
+      sessionId: session.id,
+      newMessage: input,
+    })) {
+      if (event.partial) continue;
+      if (event.errorCode) {
+        log(red(`model error ${event.errorCode}: ${event.errorMessage ?? '(no message)'}`));
+        continue;
       }
-
-      const next = (await ask(`\n${bold('You:')}\n> `)).trim();
-      if (!next || next.toLowerCase() === 'quit') {
-        log('done.');
-        break;
-      }
-      input = userMessage(next);
+      if (!isFinalResponse(event)) continue;
+      const text = extractText(event);
+      if (!text) continue;
+      console.log(`\n${heading('--- agent reply ---')}\n`);
+      console.log(text);
+      console.log(`\n${heading('-------------------')}`);
     }
-  } finally {
-    rl.close();
+
+    const next = (await ask(`\n${bold('You:')}\n> `)).trim();
+    if (!next || next.toLowerCase() === 'quit') {
+      log('done.');
+      break;
+    }
+    input = userMessage(next);
   }
 }
 

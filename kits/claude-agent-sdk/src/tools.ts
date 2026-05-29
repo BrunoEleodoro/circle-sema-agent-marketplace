@@ -181,6 +181,39 @@ const deployWalletTool = tool(
   },
 );
 
+const fundFiatTool = tool(
+  'circle_fund_fiat',
+  'Fund a wallet with a fiat (card / bank) purchase via the Transak on-ramp. ' +
+    'Returns a Transak `url` to give the user as a link to open: they complete the ' +
+    'purchase there and the tokens deposit to the wallet on the chosen chain (defaults ' +
+    'to Base). This tool only generates the URL and moves no USDC itself, so it needs ' +
+    'no approval; the user pays inside the on-ramp. Use this when the user wants to buy ' +
+    'USDC with money they do not yet hold in crypto. After the user reports the purchase ' +
+    'complete, confirm with circle_get_balance. Mainnet only.',
+  {
+    address: z.string().describe('Destination agent wallet address (0x...).'),
+    amount: z.number().positive().describe('Amount of token to buy, in human units (e.g. 10 for $10 of USDC).'),
+    chain: chainEnum.optional().describe('Chain the funds deposit on. Defaults to BASE.'),
+    token: z
+      .enum(['usdc', 'eurc', 'eth', 'native'])
+      .optional()
+      .describe('Token to buy. Defaults to usdc.'),
+  },
+  async ({ address, amount, chain, token }): Promise<ToolResult> => {
+    log(`circle_fund_fiat address=${address} amount=${amount} chain=${chain ?? 'BASE'} token=${token ?? 'usdc'}`);
+    try {
+      // Local interactive demo: open the Transak page in the user's browser so
+      // they can complete the purchase. Best-effort and a no-op on headless.
+      const result = await circle.fundWalletFiat({ address, amount, chain, token, open: true });
+      log(`circle_fund_fiat ← ${preview(result.url, 80)}`);
+      return ok(result);
+    } catch (e) {
+      log(`circle_fund_fiat ✗ ${(e as Error).message}`);
+      return err(e);
+    }
+  },
+);
+
 const searchServices = tool(
   'circle_search_services',
   'Discover x402-compatible services on the Circle Agent Marketplace matching a keyword.',
@@ -453,6 +486,7 @@ const ALL_TOOLS = [
   getWalletBalance,
   getGatewayBalance,
   deployWalletTool,
+  fundFiatTool,
   searchServices,
   inspectService,
   fetchServiceTool,

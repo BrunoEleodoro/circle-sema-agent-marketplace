@@ -68,17 +68,25 @@ async function main(): Promise<void> {
   log(`chain=BASE model=${config.model} auth=ANTHROPIC_API_KEY`);
   log(dim('tip: type "exit" at any prompt to quit'));
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // Open readline only for the duration of a single question. Keeping it open
+  // across the whole session would leave it attached to the TTY in terminal
+  // mode while the agent streams, where any keystroke (or a stdout write racing
+  // its line-refresh) repaints its prompt mid-output. Open/close per prompt so
+  // readline never owns the TTY during streaming.
   // `exit` typed at ANY prompt (chat input or an approval [y/N]) halts the demo
   // immediately, before the answer reaches the caller.
   const ask = async (q: string): Promise<string> => {
-    const answer = await rl.question(q);
-    if (answer.trim().toLowerCase() === 'exit') {
-      log('exit, halting.');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question(q);
+      if (answer.trim().toLowerCase() === 'exit') {
+        log('exit, halting.');
+        process.exit(0);
+      }
+      return answer;
+    } finally {
       rl.close();
-      process.exit(0);
     }
-    return answer;
   };
 
   // Human-in-the-loop, the SDK-native mirror of LangChain's interruptOn: the
@@ -135,34 +143,30 @@ async function main(): Promise<void> {
     }
   }
 
-  try {
-    // Inline auth: ensure the Circle CLI has a valid agent session before the
-    // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
-    // reported as a manual step (the kit never accepts the Terms for the user).
-    await ensureLoggedIn(ask, log);
+  // Inline auth: ensure the Circle CLI has a valid agent session before the
+  // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
+  // reported as a manual step (the kit never accepts the Terms for the user).
+  await ensureLoggedIn(ask, log);
 
-    log('invoking agent ...');
-    const session = query({ prompt: inputStream(), options: buildQueryOptions(config, canUseTool) });
+  log('invoking agent ...');
+  const session = query({ prompt: inputStream(), options: buildQueryOptions(config, canUseTool) });
 
-    // One `query` call is the whole conversation: the SDK keeps full context
-    // across turns natively, so there is no thread_id to carry. We print as
-    // messages stream and, on each turn's `result`, prompt for the next turn.
-    for await (const msg of session) {
-      if (msg.type === 'assistant') {
-        printAssistant(msg);
-      } else if (msg.type === 'result') {
-        printResult(msg);
-        const next = (await ask(`\n${bold('You:')}\n> `)).trim();
-        if (!next || next.toLowerCase() === 'quit') {
-          log('done.');
-          pushInput(null);
-        } else {
-          pushInput(userMessage(next));
-        }
+  // One `query` call is the whole conversation: the SDK keeps full context
+  // across turns natively, so there is no thread_id to carry. We print as
+  // messages stream and, on each turn's `result`, prompt for the next turn.
+  for await (const msg of session) {
+    if (msg.type === 'assistant') {
+      printAssistant(msg);
+    } else if (msg.type === 'result') {
+      printResult(msg);
+      const next = (await ask(`\n${bold('You:')}\n> `)).trim();
+      if (!next || next.toLowerCase() === 'quit') {
+        log('done.');
+        pushInput(null);
+      } else {
+        pushInput(userMessage(next));
       }
     }
-  } finally {
-    rl.close();
   }
 }
 
