@@ -29,8 +29,12 @@ const SPEND_TOOL_SET = new Set<string>(SPEND_TOOLS);
  * hand-written system prompt: the bootstrap prompt plus setup.md drive the
  * flow.
  */
-export function buildAgent(config: KitConfig, approve: ApprovalFn): LlmAgent {
-  const tools = buildTools();
+export function buildAgent(
+  config: KitConfig,
+  approve: ApprovalFn,
+  ask: (q: string) => Promise<string>,
+): LlmAgent {
+  const tools = buildTools(ask);
 
   const beforeToolCallback: SingleBeforeToolCallback = async ({ tool, args }) => {
     if (!SPEND_TOOL_SET.has(tool.name)) return undefined;

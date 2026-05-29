@@ -77,7 +77,7 @@ async function main(): Promise<void> {
     return approved;
   };
 
-  const agent = buildAgent(config, approve);
+  const agent = buildAgent(config, approve, ask);
   const runner = new InMemoryRunner({ agent, appName: APP_NAME });
 
   // Brief's AGENT BOOTSTRAP PROMPT, verbatim. setup.md drives the first turn.

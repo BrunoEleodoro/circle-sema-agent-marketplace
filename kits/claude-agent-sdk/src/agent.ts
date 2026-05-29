@@ -24,10 +24,14 @@ import { buildCircleServer, MCP_SERVER_NAME } from './tools';
  * CLI extraction) looks like an indefinite freeze. Surfacing it turns any such
  * failure into a visible diagnostic instead.
  */
-export function buildQueryOptions(config: KitConfig, canUseTool: CanUseTool): Options {
+export function buildQueryOptions(
+  config: KitConfig,
+  canUseTool: CanUseTool,
+  ask: (q: string) => Promise<string>,
+): Options {
   return {
     model: config.model,
-    mcpServers: { [MCP_SERVER_NAME]: buildCircleServer() },
+    mcpServers: { [MCP_SERVER_NAME]: buildCircleServer(ask) },
     tools: [],
     canUseTool,
     permissionMode: 'default',

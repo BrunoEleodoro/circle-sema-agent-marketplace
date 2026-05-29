@@ -10,7 +10,7 @@ import {
   SUB_SKILL_NAMES,
   type SubSkillName,
 } from './skill';
-import { toolLine } from './theme';
+import { bold, toolLine } from './theme';
 
 /**
  * The Circle tools run as an in-process MCP server (`createSdkMcpServer`), the
@@ -494,14 +494,64 @@ const ALL_TOOLS = [
   gatewayDepositTool,
 ];
 
-/** Fully-qualified names of every tool, for the SDK `allowedTools` allowlist. */
-export const ALL_TOOL_NAMES = ALL_TOOLS.map((t) => fq(t.name));
+/**
+ * The in-process MCP server exposing the Circle tools to the agent.
+ *
+ * The login/logout tools are built here, not at module scope, because they need
+ * the demo's terminal `ask` to prompt the human for their email + OTP inline
+ * (the kit never stores either). They let the agent recover an expired or
+ * logged-out session mid-conversation instead of dead-ending on "run it
+ * yourself" with no tool to call.
+ */
+export function buildCircleServer(ask: (q: string) => Promise<string>) {
+  const loginTool = tool(
+    'circle_login',
+    'Log in to the Circle agent wallet via email + OTP, or confirm an existing session. ' +
+      'Use this whenever the user wants to log in or log back in, or when another tool fails ' +
+      'because the session is missing or expired. The kit prompts the user in the terminal ' +
+      'for their email and the OTP from their inbox (never stored); it does not accept the ' +
+      'Terms of Use on their behalf. If a session is already valid this is a no-op that ' +
+      'reports so. After it succeeds, retry whatever the user originally asked for.',
+    {},
+    async (): Promise<ToolResult> => {
+      log('circle_login');
+      try {
+        const result = await circle.ensureSession({ ask, log, bold });
+        const message =
+          result.status === 'already-valid'
+            ? 'Already logged in; the Circle session is valid.'
+            : 'Logged in. The Circle session is now valid.';
+        log(`circle_login ← ${result.status}`);
+        return ok({ status: result.status, message });
+      } catch (e) {
+        log(`circle_login ✗ ${(e as Error).message}`);
+        return err(e);
+      }
+    },
+  );
 
-/** The in-process MCP server exposing the Circle tools to the agent. */
-export function buildCircleServer() {
+  const logoutTool = tool(
+    'circle_logout',
+    'Log out of the Circle agent wallet and clear the stored credentials. Use this when the ' +
+      'user wants to log out or switch accounts. Safe to call when no session exists (reports ' +
+      'that nothing was logged out). After this, the user must circle_login again before any ' +
+      'wallet or payment tool will work.',
+    {},
+    async (): Promise<ToolResult> => {
+      log('circle_logout');
+      try {
+        circle.logout(log);
+        return ok({ message: 'Logged out; Circle credentials cleared.' });
+      } catch (e) {
+        log(`circle_logout ✗ ${(e as Error).message}`);
+        return err(e);
+      }
+    },
+  );
+
   return createSdkMcpServer({
     name: MCP_SERVER_NAME,
     version: '0.0.0',
-    tools: ALL_TOOLS,
+    tools: [...ALL_TOOLS, loginTool, logoutTool],
   });
 }

@@ -149,7 +149,10 @@ async function main(): Promise<void> {
   await ensureLoggedIn(ask, log);
 
   log('invoking agent ...');
-  const session = query({ prompt: inputStream(), options: buildQueryOptions(config, canUseTool) });
+  const session = query({
+    prompt: inputStream(),
+    options: buildQueryOptions(config, canUseTool, ask),
+  });
 
   // One `query` call is the whole conversation: the SDK keeps full context
   // across turns natively, so there is no thread_id to carry. We print as

@@ -142,8 +142,6 @@ async function main(): Promise<void> {
   log(`chain=BASE provider=${config.provider} model=${config.model}`);
   log(dim('tip: type "exit" at any prompt to quit'));
 
-  const agent = buildAgent(config);
-
   // Brief's AGENT BOOTSTRAP PROMPT, verbatim. setup.md drives the first turn.
   const userPrompt =
     `Run curl -sL ${SETUP_SKILL_URL}, ` +
@@ -179,6 +177,10 @@ async function main(): Promise<void> {
   // runs. Logs in with email + OTP if needed; a pending Terms gate is reported
   // as a manual step (the kit never accepts the Terms for the user).
   await ensureLoggedIn(ask, log);
+
+  // Built after `ask` exists: the agent's circle_login tool prompts for email +
+  // OTP through it to recover a logged-out session mid-conversation.
+  const agent = buildAgent(config, ask);
 
   // Interactive chat loop. The first turn runs the bootstrap prompt; after
   // the agent settles, the user drives follow-up turns. Each turn shares the
