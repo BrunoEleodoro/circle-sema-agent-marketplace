@@ -10,6 +10,7 @@ Open-source example projects integrating the [Circle Agent Stack](https://develo
 | [`kits/claude-agent-sdk`](./kits/claude-agent-sdk) | Claude Agent SDK | https://code.claude.com/docs/en/agent-sdk/overview |
 | [`kits/mastra`](./kits/mastra) | Mastra | https://mastra.ai/docs |
 | [`kits/openai-agents`](./kits/openai-agents) | OpenAI Agents SDK | https://openai.github.io/openai-agents-js |
+| [`kits/vercel-ai`](./kits/vercel-ai) | Vercel AI SDK | https://sdk.vercel.ai/docs |
 
 ## Shared package
 
@@ -25,7 +26,8 @@ agent-stack-ecosystem-kits/
     ├── mastra/
     ├── claude-agent-sdk/
     ├── openai-agents/
-    └── langchain/
+    ├── langchain/
+    └── vercel-ai/
 ```
 
 ## Prerequisites
