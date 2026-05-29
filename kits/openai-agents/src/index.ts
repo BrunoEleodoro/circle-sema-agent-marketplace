@@ -2,76 +2,49 @@ import 'dotenv/config';
 import { createInterface } from 'node:readline/promises';
 import { run, user } from '@openai/agents';
 import type { Agent, RunResult } from '@openai/agents';
-import { runCircle } from '@agent-stack-ecosystem-kits/circle-tools';
+import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
 import { withRetry } from './retry';
+import { bold, kitLine } from './theme';
+
+function log(line: string): void {
+  console.log(kitLine(line));
+}
 
 async function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await rl.question(`\n${question}\n> `);
+  const answer = await rl.question(question);
   rl.close();
   return answer.trim();
 }
 
-async function preflightAuth(): Promise<void> {
-  let statusOut: string;
-  try {
-    statusOut = runCircle(['wallet', 'status']);
-  } catch (err) {
-    statusOut = err instanceof Error ? err.message : String(err);
-  }
-
-  if (statusOut.includes('Terms acceptance is required')) {
-    const answer = await ask(
-      'Circle CLI requires Terms of Use acceptance.\n' +
-        'Terms: https://agents.circle.com/terms-of-use\n' +
-        'Privacy: https://www.circle.com/legal/privacy-policy\n' +
-        'Do you accept? [yes/no]',
-    );
-    if (answer.toLowerCase() !== 'yes') throw new Error('Terms not accepted — cannot continue.');
-    runCircle(['terms', 'accept']);
-    try { statusOut = runCircle(['wallet', 'status']); } catch (err) { statusOut = err instanceof Error ? err.message : String(err); }
-  }
-
-  if (statusOut.includes('Not logged in') || statusOut.includes('AUTH_REQUIRED')) {
-    const email = await ask('Enter your Circle account email:');
-    const initOut = runCircle(['wallet', 'login', email.trim(), '--init']);
-    const requestId = initOut.match(/--request\s+([a-f0-9-]+)/)?.[1];
-    if (!requestId) throw new Error(`Could not parse request ID:\n${initOut}`);
-    const otp = await ask(`OTP sent to ${email.trim()}. Enter code:`);
-    runCircle(['wallet', 'login', '--request', requestId, '--otp', otp.trim()]);
-  }
-}
-
 async function main(): Promise<void> {
-  console.log('[openai-agents-kit] starting Circle Agent Stack onboarding demo\n');
+  log('starting Circle Agent Stack onboarding demo');
   const config = loadConfig();
-  console.log(`[openai-agents-kit] chain=${config.chain} model=${config.model}`);
+  log(`chain=${config.chain} model=${config.model}`);
 
-  console.log('[openai-agents-kit] checking authentication...');
-  await preflightAuth();
-  console.log('[openai-agents-kit] authenticated\n');
+  await ensureSession({ ask, log, bold });
 
-  const agent = buildAgent(config);
+  const agent = buildAgent(config, ask);
   const prompt = 'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
-  console.log(`[openai-agents-kit] prompt: ${prompt}\n`);
-  console.log('[openai-agents-kit] running agent...\n');
+  log(`prompt: ${prompt}`);
+  log('running agent...');
 
   let result = await withRetry(() => run(agent, prompt), 'agent');
   result = await resolveInterruptions(result, agent);
   console.log(result.finalOutput ?? '(no output)');
 
-  console.log('\n[openai-agents-kit] continue the conversation — type "exit" to quit\n');
+  log('continue the conversation — type "exit" to quit');
   while (true) {
-    const input = await ask('You:');
+    const input = await ask(`\n${bold('You:')}\n> `);
     if (!input || input.toLowerCase() === 'exit') break;
     result = await withRetry(() => run(agent, [...result.history, user(input)]), 'agent');
     result = await resolveInterruptions(result, agent);
     console.log('\n' + (result.finalOutput ?? '(no output)') + '\n');
   }
 
-  console.log('\n[openai-agents-kit] onboarding complete');
+  log('onboarding complete');
 }
 
 async function resolveInterruptions(
@@ -87,7 +60,7 @@ async function resolveInterruptions(
       console.log(`\n[approval required] ${toolName}`);
       console.log(JSON.stringify(toolArgs, null, 2));
 
-      const answer = await ask(`Allow ${toolName}? [yes/no]`);
+      const answer = await ask(`\nAllow ${toolName}? [yes/no]\n> `);
       if (answer.toLowerCase() === 'yes') {
         result.state.approve(interruption);
       } else {

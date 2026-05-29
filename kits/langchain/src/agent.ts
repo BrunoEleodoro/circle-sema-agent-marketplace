@@ -46,8 +46,8 @@ function makeOnFailedAttempt() {
  */
 const INTERRUPT_TOOLS = ['circle_pay_service', 'circle_gateway_deposit'] as const;
 
-export function buildAgent(config: KitConfig) {
-  const tools = buildTools();
+export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string>) {
+  const tools = buildTools(ask);
   // maxRetries bounds the backoff so a sustained outage fails with a clear error
   // instead of hanging; onFailedAttempt makes each retry visible.
   const retry = { maxRetries: MAX_RETRIES, onFailedAttempt: makeOnFailedAttempt() };

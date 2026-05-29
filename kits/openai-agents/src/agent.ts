@@ -16,9 +16,11 @@ import {
   circlePayService,
   circleGatewayDeposit,
   callFreeService,
+  buildAuthTools,
 } from './tools';
 
-export function buildAgent(config: KitConfig): Agent {
+export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string>): Agent {
+  const { loginTool, logoutTool } = buildAuthTools(ask);
   return new Agent({
     name: 'Circle Payment Agent',
     instructions: [
@@ -36,6 +38,8 @@ export function buildAgent(config: KitConfig): Agent {
     ].join(' '),
     model: config.model,
     tools: [
+      loginTool,
+      logoutTool,
       fetchSetupSkillTool,
       fetchSubSkillTool,
       circleCreateWallet,

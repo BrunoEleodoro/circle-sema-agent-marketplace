@@ -78,7 +78,10 @@ const agentStep = createStep({
   outputSchema: z.object({ summary: z.string() }),
   execute: async () => {
     const config = loadConfig();
-    const agent = buildAgent(config);
+    const noInteractiveAsk = async (): Promise<string> => {
+      throw new Error('No interactive terminal available in this workflow step.');
+    };
+    const agent = buildAgent(config, noInteractiveAsk);
     const result = await withRetry(() => agent.generate(PROMPT, { maxSteps: 30 }), 'agent');
     return { summary: result.text ?? '(no output)' };
   },

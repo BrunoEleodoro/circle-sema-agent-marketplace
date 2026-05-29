@@ -7,9 +7,9 @@ import {
   type SDKMessage,
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildQueryOptions } from './agent';
-import { ensureLoggedIn } from './auth';
 import { loadConfig } from './config';
 import { SETUP_SKILL_URL } from './skill';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
@@ -146,10 +146,13 @@ async function main(): Promise<void> {
   // Inline auth: ensure the Circle CLI has a valid agent session before the
   // agent runs. Logs in with email + OTP if needed; a pending Terms gate is
   // reported as a manual step (the kit never accepts the Terms for the user).
-  await ensureLoggedIn(ask, log);
+  await ensureSession({ ask, log, bold });
 
   log('invoking agent ...');
-  const session = query({ prompt: inputStream(), options: buildQueryOptions(config, canUseTool) });
+  const session = query({
+    prompt: inputStream(),
+    options: buildQueryOptions(config, canUseTool, ask),
+  });
 
   // One `query` call is the whole conversation: the SDK keeps full context
   // across turns natively, so there is no thread_id to carry. We print as
