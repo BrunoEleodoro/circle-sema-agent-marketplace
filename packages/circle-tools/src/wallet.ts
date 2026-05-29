@@ -1,4 +1,5 @@
 import { runCircle, runCircleJson } from './cli';
+import { openInBrowser } from './browser';
 import { chainCli, chainRpcUrl, DEFAULT_CHAIN, type Chain } from './chains';
 import type { AgentWallet, TokenBalance, WalletBalance } from './types';
 
@@ -10,6 +11,7 @@ import type { AgentWallet, TokenBalance, WalletBalance } from './types';
 const WALLET_LIST_CHAIN = chainCli(DEFAULT_CHAIN);
 const EVM_ADDRESS_REGEX = /0x[a-fA-F0-9]{40}/;
 const TX_HASH_REGEX = /0x[a-fA-F0-9]{64}/;
+const HTTPS_URL_REGEX = /https?:\/\/[^\s"']+/;
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 /** Extra attempts for idempotent read commands when the network blips. */
 const READ_RETRIES = 3;
@@ -28,6 +30,39 @@ export interface DeployWalletInput {
   address: string;
   /** Chain to deploy / check the SCA on. Defaults to Base. */
   chain?: Chain;
+}
+
+/** Tokens the fiat on-ramp can buy. `usdc` is the default. */
+export type FundToken = 'usdc' | 'eurc' | 'eth' | 'native';
+
+export interface FundFiatInput {
+  /** Destination wallet address; must be one of the agent's own wallets. */
+  address: string;
+  /** Amount of `token` to buy, in human units (e.g. 10 for $10 of USDC). */
+  amount: number | string;
+  /** Chain the funds deposit on. Defaults to Base. */
+  chain?: Chain;
+  /** Token to buy. Defaults to `usdc`. */
+  token?: FundToken;
+  /**
+   * Local-run convenience: also open the Transak URL in the user's default
+   * browser. Best-effort and a no-op on a headless / remote host. Off by
+   * default; agents should leave this off and hand the user the returned `url`.
+   */
+  open?: boolean;
+}
+
+export interface FundFiatResult {
+  address: string;
+  chain: Chain;
+  amount: string;
+  token: FundToken;
+  /**
+   * The Transak on-ramp URL. Hand this to the user as a link to open; they
+   * complete the card / bank purchase there and the tokens deposit to `address`.
+   * Generating this URL moves no money on its own.
+   */
+  url: string;
 }
 
 export interface DeployWalletResult {
@@ -132,6 +167,69 @@ export async function getBalance(input: GetBalanceInput): Promise<WalletBalance>
     address: raw.data?.address ?? input.address,
     tokens,
   };
+}
+
+/**
+ * Generate a fiat on-ramp (Transak) purchase URL for funding a wallet with a
+ * card or bank transfer, via `circle wallet fund --method fiat`.
+ *
+ * Runs with `--no-open` so the CLI prints the Transak URL instead of trying to
+ * launch a browser: an agent process has no browser to open, and a server-side
+ * `--open` would do nothing useful. The caller hands the returned `url` to the
+ * user as a link to click. This call only mints the URL; no USDC moves until
+ * the user completes the purchase in the on-ramp.
+ *
+ * Mainnet only: fiat on-ramp is not available on testnet chains (the CLI drips
+ * from a faucet there instead).
+ */
+export async function fundWalletFiat(input: FundFiatInput): Promise<FundFiatResult> {
+  const chain = input.chain ?? DEFAULT_CHAIN;
+  const token: FundToken = input.token ?? 'usdc';
+  const amount = String(input.amount);
+
+  // `--no-open` prints the Transak URL rather than opening a browser; `--method
+  // fiat` and `--amount` are both required in non-interactive (agent) use.
+  const out = runCircle([
+    'wallet',
+    'fund',
+    '--address',
+    input.address,
+    '--chain',
+    chainCli(chain),
+    '--amount',
+    amount,
+    '--token',
+    token,
+    '--method',
+    'fiat',
+    '--no-open',
+    '--output',
+    'json',
+  ]);
+
+  const url = extractFundUrl(out);
+  if (!url) {
+    throw new Error(`circle wallet fund returned no on-ramp URL. Raw output:\n${out}`);
+  }
+  if (input.open) openInBrowser(url);
+  return { address: input.address, chain, amount, token, url };
+}
+
+/**
+ * Pull the Transak widget URL out of `circle wallet fund` output. The CLI nests
+ * it at `data.widgetUrl`; fall back to the first https URL in the raw text in
+ * case the field is ever renamed.
+ */
+function extractFundUrl(out: string): string | undefined {
+  const trimmed = out.trim();
+  try {
+    const env = JSON.parse(trimmed) as { data?: Record<string, unknown> };
+    const url = env.data?.widgetUrl ?? env.data?.url;
+    if (typeof url === 'string' && url.length > 0) return url;
+  } catch {
+    // fall through to regex extraction
+  }
+  return trimmed.match(HTTPS_URL_REGEX)?.[0];
 }
 
 function sleep(ms: number): Promise<void> {
