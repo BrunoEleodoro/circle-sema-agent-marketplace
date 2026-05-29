@@ -154,45 +154,49 @@ async function main(): Promise<void> {
   // by the MemorySaver checkpointer carries across the whole session.
   const runConfig: RunConfig = { configurable: { thread_id: `demo-${Date.now()}` } };
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // Open readline only for the duration of a single question. Keeping it open
+  // across the whole session would leave it attached to the TTY in terminal
+  // mode while the agent streams, where any keystroke (or a stdout write racing
+  // its line-refresh) repaints its prompt mid-output. Open/close per prompt so
+  // readline never owns the TTY during streaming.
   // `exit` typed at ANY prompt (chat input or an approval [y/N]) halts the
   // demo immediately, before the answer reaches the caller.
   const ask = async (q: string): Promise<string> => {
-    const answer = await rl.question(q);
-    if (answer.trim().toLowerCase() === 'exit') {
-      log('exit, halting.');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question(q);
+      if (answer.trim().toLowerCase() === 'exit') {
+        log('exit, halting.');
+        process.exit(0);
+      }
+      return answer;
+    } finally {
       rl.close();
-      process.exit(0);
     }
-    return answer;
   };
 
-  try {
-    // Inline auth: make sure the CLI has a valid agent session before the agent
-    // runs. Logs in with email + OTP if needed; a pending Terms gate is reported
-    // as a manual step (the kit never accepts the Terms for the user).
-    await ensureLoggedIn(ask, log);
+  // Inline auth: make sure the CLI has a valid agent session before the agent
+  // runs. Logs in with email + OTP if needed; a pending Terms gate is reported
+  // as a manual step (the kit never accepts the Terms for the user).
+  await ensureLoggedIn(ask, log);
 
-    // Interactive chat loop. The first turn runs the bootstrap prompt; after
-    // the agent settles, the user drives follow-up turns. Each turn shares the
-    // thread_id above, so the agent keeps full context across turns. Empty
-    // input or `exit` / `quit` ends the session.
-    log('invoking agent ...');
-    let input: { messages: HumanMessage[] } = { messages: [new HumanMessage(userPrompt)] };
+  // Interactive chat loop. The first turn runs the bootstrap prompt; after
+  // the agent settles, the user drives follow-up turns. Each turn shares the
+  // thread_id above, so the agent keeps full context across turns. Empty
+  // input or `exit` / `quit` ends the session.
+  log('invoking agent ...');
+  let input: { messages: HumanMessage[] } = { messages: [new HumanMessage(userPrompt)] };
 
-    while (true) {
-      const result = await runTurn(agent, input, runConfig, ask);
-      printFinal(result);
+  while (true) {
+    const result = await runTurn(agent, input, runConfig, ask);
+    printFinal(result);
 
-      const next = (await ask(`\n${bold('You:')}\n> `)).trim();
-      if (!next || next.toLowerCase() === 'quit') {
-        log('done.');
-        break;
-      }
-      input = { messages: [new HumanMessage(next)] };
+    const next = (await ask(`\n${bold('You:')}\n> `)).trim();
+    if (!next || next.toLowerCase() === 'quit') {
+      log('done.');
+      break;
     }
-  } finally {
-    rl.close();
+    input = { messages: [new HumanMessage(next)] };
   }
 }
 
