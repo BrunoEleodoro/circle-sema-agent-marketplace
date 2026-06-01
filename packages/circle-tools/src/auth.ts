@@ -131,8 +131,9 @@ async function runEmailOtpLogin(io: Required<InteractiveIo>): Promise<void> {
     ).trim();
     if (!otp) throw new Error('No OTP entered, cannot complete login.');
 
+    let otpOut = '';
     try {
-      runCircle(['wallet', 'login', '--request', requestId, '--otp', otp]);
+      otpOut = runCircle(['wallet', 'login', '--request', requestId, '--otp', otp]);
     } catch (e) {
       const text = rawText(e);
       if (termsPending(text)) throw new Error(TERMS_MESSAGE);
@@ -142,9 +143,31 @@ async function runEmailOtpLogin(io: Required<InteractiveIo>): Promise<void> {
       log('a Circle login code can only be tried once, so a new code is being sent; type "exit" to quit');
       continue;
     }
+    // Surface any stdout from the OTP command — it may contain a Terms-of-Use
+    // prompt that exited 0 without storing a session when stdin was not a TTY.
+    if (otpOut.trim()) console.log(otpOut.trim());
+    if (termsPending(otpOut)) throw new Error(TERMS_MESSAGE);
 
-    if (!isLoggedIn(statusText())) {
-      throw new Error('Login completed but no valid session was produced. Re-run the demo.');
+    // The Circle backend may take a moment to activate the session after the OTP
+    // command exits. Retry the status check up to 3 times with a 1-second delay
+    // so transient timing issues or brief network blips don't surface as a fatal error.
+    let lastStatus = '';
+    let sessionOk = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000));
+      lastStatus = statusText();
+      if (isLoggedIn(lastStatus)) { sessionOk = true; break; }
+    }
+    if (!sessionOk) {
+      // On Linux the Circle CLI stores credentials via secret-tool (libsecret).
+      // If secret-tool is missing the session is lost on every login, leaving
+      // only the previous EXPIRED entry. Fix: sudo apt-get install libsecret-tools
+      const hint = process.platform === 'linux'
+        ? ' On Linux, install libsecret-tools (sudo apt-get install libsecret-tools) and ensure a keyring daemon (gnome-keyring-daemon) is running.'
+        : '';
+      throw new Error(
+        `Login completed but no valid session was produced (status: ${lastStatus.trim()}).${hint} Re-run the demo.`,
+      );
     }
     log('logged in, Circle session valid');
     return;
