@@ -3,10 +3,11 @@ import { createInterface } from 'node:readline/promises';
 import { run, user } from '@openai/agents';
 import type { Agent, RunResult } from '@openai/agents';
 import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
 import { withRetry } from './retry';
-import { bold, kitLine } from './theme';
+import { bold, colorizeJson, dim, green, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
   console.log(kitLine(line));
@@ -20,14 +21,15 @@ async function ask(question: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  log('starting Circle Agent Stack onboarding demo');
+  log('Autonomous Payment Agent demo starting');
   const config = loadConfig();
-  log(`chain=${config.chain} model=${config.model}`);
+  log(`chain=BASE model=${config.model} auth=OPENAI_API_KEY`);
+  log(dim('tip: type "exit" at any prompt to quit'));
 
   await ensureSession({ ask, log, bold });
 
   const agent = buildAgent(config, ask);
-  const prompt = 'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
+  const prompt = BOOTSTRAP_PROMPT;
   log(`prompt: ${prompt}`);
   log('running agent...');
 
@@ -44,7 +46,7 @@ async function main(): Promise<void> {
     console.log('\n' + (result.finalOutput ?? '(no output)') + '\n');
   }
 
-  log('onboarding complete');
+  log('done.');
 }
 
 async function resolveInterruptions(
@@ -57,11 +59,13 @@ async function resolveInterruptions(
       const toolName = rawItem?.name ?? 'unknown';
       const toolArgs = (() => { try { return JSON.parse(rawItem?.arguments ?? '{}'); } catch { return {}; } })();
 
-      console.log(`\n[approval required] ${toolName}`);
-      console.log(JSON.stringify(toolArgs, null, 2));
+      log(yellow(`approval required for tool: ${bold(toolName)}`));
+      console.log(colorizeJson(toolArgs));
 
-      const answer = await ask(`\nAllow ${toolName}? [yes/no]\n> `);
-      if (answer.toLowerCase() === 'yes') {
+      const answer = (await ask(bold('Approve this action? [y/N] '))).trim().toLowerCase();
+      const approved = answer === 'y' || answer === 'yes';
+      log(approved ? green('approved by user') : red('rejected by user'));
+      if (approved) {
         result.state.approve(interruption);
       } else {
         result.state.reject(interruption, { message: 'User declined.' });

@@ -11,7 +11,7 @@ import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildQueryOptions } from './agent';
 import { loadConfig } from './config';
-import { SETUP_SKILL_URL } from './skill';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
 import { SPEND_TOOLS } from './tools';
 
@@ -129,13 +129,8 @@ async function main(): Promise<void> {
     });
   }
 
-  // Brief's AGENT BOOTSTRAP PROMPT, verbatim. setup.md drives the first turn.
-  const bootstrapPrompt =
-    `Run curl -sL ${SETUP_SKILL_URL}, ` +
-    'and use the returned setup instructions to set up my agent wallet.';
-
   async function* inputStream(): AsyncGenerator<SDKUserMessage> {
-    yield userMessage(bootstrapPrompt);
+    yield userMessage(BOOTSTRAP_PROMPT);
     while (true) {
       const next = await nextInput();
       if (next === null) return;

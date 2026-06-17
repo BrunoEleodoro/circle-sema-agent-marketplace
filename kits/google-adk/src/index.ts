@@ -6,14 +6,14 @@ import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildAgent, type ApprovalFn } from './agent';
 import { loadConfig } from './config';
-import { SETUP_SKILL_URL } from './skill';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
 
 const APP_NAME = 'circle-payment-agent';
 const USER_ID = 'demo-user';
 
 // ADK's built-in winston logger defaults to INFO and prints every model request
-// and session event to stdout, which drowns the kit's own [adk-kit]/[tool] lines.
+// and session event to stdout, which drowns the kit's own [google-adk-kit]/[tool] lines.
 // Clamp to WARN so framework errors still surface but the chat output stays clean.
 setLogLevel(LogLevel.WARN);
 
@@ -80,10 +80,7 @@ async function main(): Promise<void> {
   const agent = buildAgent(config, approve, ask);
   const runner = new InMemoryRunner({ agent, appName: APP_NAME });
 
-  // Brief's AGENT BOOTSTRAP PROMPT, verbatim. setup.md drives the first turn.
-  const bootstrapPrompt =
-    `Run curl -sL ${SETUP_SKILL_URL}, ` +
-    'and use the returned setup instructions to set up my agent wallet.';
+  const bootstrapPrompt = BOOTSTRAP_PROMPT;
 
   // Inline auth: ensure the Circle CLI has a valid agent session before the
   // agent runs. Logs in with email + OTP if needed; a pending Terms gate is

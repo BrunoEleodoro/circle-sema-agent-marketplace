@@ -7,7 +7,7 @@ import { loadConfig, type KitConfig } from './config';
 import { runTurn } from './agent';
 import { buildTools, type CircleTools } from './tools';
 import { withRetry } from './retry';
-import { SETUP_SKILL_URL } from './skill';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
 import { bold, dim, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
@@ -43,7 +43,7 @@ async function runAgentTurn(
 async function main(): Promise<void> {
   log('Autonomous Payment Agent demo starting');
   const config = loadConfig();
-  log(`chain=${config.chain} provider=${config.provider} model=${config.model}`);
+  log(`chain=BASE provider=${config.provider} model=${config.model}`);
   log(dim('tip: type "exit" at any prompt to quit'));
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -68,9 +68,7 @@ async function main(): Promise<void> {
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     // The first turn is driven by the Circle setup skill, not a system prompt.
-    const bootstrapPrompt =
-      `Run curl -sL ${SETUP_SKILL_URL}, ` +
-      'and use the returned setup instructions to set up my agent wallet.';
+    const bootstrapPrompt = BOOTSTRAP_PROMPT;
 
     // Conversation history — the running CoreMessage[] that grows each turn.
     // Vercel AI SDK's `generateText` is stateless: we own the history and pass
