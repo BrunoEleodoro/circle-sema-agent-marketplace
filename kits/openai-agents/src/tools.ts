@@ -26,7 +26,6 @@ import {
 } from '@agent-stack-ecosystem-kits/kit-core/skill';
 import {
   TOOL_DESCRIPTIONS,
-  preview,
   selectPayChain,
   selectGatewayChain,
   ensureDeployed,
@@ -40,6 +39,24 @@ function log(line: string): void {
   console.log(toolLine(line));
 }
 
+function preview(value: string, max = 120): string {
+  const oneLine = value.replace(/\s+/g, ' ').trim();
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine;
+}
+
+// Cap skill markdown returned to the model. These files can exceed 26 KB;
+// the actionable steps are always near the top, and oversized responses
+// balloon the conversation history across turns causing TPM 429s.
+const MAX_SKILL_CHARS = 8_000;
+
+function capSkill(body: string, name: string): string {
+  if (body.length <= MAX_SKILL_CHARS) return body;
+  return (
+    body.slice(0, MAX_SKILL_CHARS) +
+    `\n\n[...${body.length - MAX_SKILL_CHARS} chars omitted — re-fetch ${name} if you need the rest]`
+  );
+}
+
 export const fetchSetupSkillTool = tool({
   name: 'fetch_setup_skill',
   description: TOOL_DESCRIPTIONS.fetch_setup_skill,
@@ -49,7 +66,7 @@ export const fetchSetupSkillTool = tool({
     try {
       const body = await fetchSetupSkill();
       log(`fetch_setup_skill ← ${body.length} bytes`);
-      return body;
+      return capSkill(body, 'fetch_setup_skill');
     } catch (e) {
       log(`fetch_setup_skill ✗ ${(e as Error).message}`);
       throw e;
@@ -70,7 +87,7 @@ export const fetchSubSkillTool = tool({
     try {
       const body = await fetchSubSkill(name);
       log(`fetch_sub_skill ← ${body.length} bytes`);
-      return body;
+      return capSkill(body, `fetch_sub_skill(${name})`);
     } catch (e) {
       log(`fetch_sub_skill ✗ ${(e as Error).message}`);
       throw e;

@@ -16,6 +16,7 @@ import {
   ensureSession,
   logout,
   type Chain,
+  runCircle,
 } from '@agent-stack-ecosystem-kits/circle-tools';
 import {
   fetchSetupSkill,
@@ -178,12 +179,12 @@ export function buildTools(ask: AskFn) {
       description: TOOL_DESCRIPTIONS.circle_get_balance,
       parameters: z.object({
         address: z.string().describe('EVM wallet address (0x...).'),
-        chain: chainEnum.optional().describe('Chain to read the balance on. Defaults to BASE.'),
+        chain: chainEnum.nullable().describe('Chain to read the balance on. Defaults to BASE.'),
       }),
       execute: async ({ address, chain }) => {
         log(`circle_get_balance address=${address} chain=${chain ?? 'BASE'}`);
         try {
-          const result = await getBalance({ address, chain: chain as Chain | undefined });
+          const result = await getBalance({ address, chain: (chain ?? undefined) as Chain | undefined });
           const tokens = (result as { tokens: Array<{ symbol?: string; amount?: string }> }).tokens;
           const usdc = tokens.find((t) => t.symbol?.toUpperCase() === 'USDC');
           log(`circle_get_balance ← USDC=${usdc?.amount ?? '0'} (${tokens.length} token(s))`);
@@ -199,12 +200,12 @@ export function buildTools(ask: AskFn) {
       description: TOOL_DESCRIPTIONS.circle_deploy_wallet,
       parameters: z.object({
         address: z.string().describe('Agent wallet address to deploy (0x...).'),
-        chain: chainEnum.optional().describe('Chain to deploy the SCA on. Defaults to BASE.'),
+        chain: chainEnum.nullable().describe('Chain to deploy the SCA on. Defaults to BASE.'),
       }),
       execute: async ({ address, chain }) => {
         log(`circle_deploy_wallet address=${address} chain=${chain ?? 'BASE'}`);
         try {
-          const result = await deployWallet({ address, chain: chain as Chain | undefined });
+          const result = await deployWallet({ address, chain: (chain ?? undefined) as Chain | undefined });
           if (result.alreadyDeployed) {
             log(`circle_deploy_wallet ← already deployed`);
           } else if (result.deployed) {
@@ -222,15 +223,51 @@ export function buildTools(ask: AskFn) {
       },
     }),
 
+    circle_wallet_fund: tool({
+      description:
+        'Fund an agent wallet with testnet USDC using the Circle faucet (BASE only). ' +
+        'Use method="crypto" for the free testnet faucet (recommended for demos). ' +
+        'Use method="fiat" for the test card flow.',
+      parameters: z.object({
+        address: z.string().describe('The wallet address to fund'),
+        method: z
+          .enum(['crypto', 'fiat'])
+          .describe('"crypto" uses the testnet faucet (default); "fiat" uses a test card.'),
+      }),
+      execute: async ({ address, method }) => {
+        log(`circle_wallet_fund address=${address} method=${method}`);
+        try {
+          const out = runCircle([
+            'wallet',
+            'fund',
+            '--address',
+            address,
+            '--chain',
+            '--method',
+            method,
+            '--output',
+            'json',
+          ]);
+          log(`circle_wallet_fund ← done`);
+          return out;
+        } catch (e) {
+          log(`circle_wallet_fund ✗ ${(e as Error).message}`);
+          return toolError(e);
+        }
+      },
+    }),
+
     circle_fund_fiat: tool({
       description: TOOL_DESCRIPTIONS.circle_fund_fiat,
       parameters: z.object({
         address: z.string().describe('Destination agent wallet address (0x...).'),
         amount: z.number().positive().describe('Amount of token to buy, in human units (e.g. 10 for $10 of USDC).'),
-        chain: chainEnum.optional().describe('Chain the funds deposit on. Defaults to BASE.'),
+      
+        chain: z
+          .enum(['BASE', 'POLYGON'])
+          .describe('Chain the funds deposit on. Defaults to BASE.'),
         token: z
           .enum(['usdc', 'eurc', 'eth', 'native'])
-          .optional()
           .describe('Token to buy. Defaults to usdc.'),
       }),
       execute: async ({ address, amount, chain, token }) => {
@@ -310,12 +347,12 @@ export function buildTools(ask: AskFn) {
       description: TOOL_DESCRIPTIONS.circle_get_gateway_balance,
       parameters: z.object({
         address: z.string().describe('EVM wallet address (0x...).'),
-        chain: chainEnum.optional().describe('Chain to read the Gateway balance on. Defaults to BASE.'),
+        chain: chainEnum.nullable().describe('Chain to read the Gateway balance on. Defaults to BASE.'),
       }),
       execute: async ({ address, chain }) => {
         log(`circle_get_gateway_balance address=${address} chain=${chain ?? 'BASE'}`);
         try {
-          const result = await gatewayBalance({ address, chain: chain as Chain | undefined });
+          const result = await gatewayBalance({ address, chain: (chain ?? undefined) as Chain | undefined });
           log(`circle_get_gateway_balance ← total=${result.total} USDC`);
           return result;
         } catch (e) {
@@ -334,24 +371,24 @@ export function buildTools(ask: AskFn) {
         address: z.string().describe('The wallet address to pay from'),
         method: z
           .enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
-          .optional()
           .describe(
             "HTTP method the service expects, copied from circle_inspect_service's `method` " +
               'field. Defaults to GET if omitted.',
           ),
         data: z
-          .record(z.string(), z.unknown())
+          .string()
           .describe(
-            'Payload object matching the service input schema. For a GET service these become ' +
-              'query parameters; for POST/PUT/PATCH they become the JSON request body.',
+            'JSON-encoded payload object matching the service input schema. For a GET service ' +
+              'these become query parameters; for POST/PUT/PATCH they become the JSON request body. ' +
+              'Pass "{}" if no payload is needed.',
           ),
       }),
       execute: async ({ url, address, method, data }) => {
         const httpMethod = (method ?? 'GET').toUpperCase();
+        const parsedData = JSON.parse(data) as Record<string, unknown>;
         log(`circle_pay_service url=${url} from=${address} method=${httpMethod}`);
 
-        // Human-in-the-loop: pause for approval before any USDC is spent.
-        if (!(await approveSpend(ask, 'circle_pay_service', { url, address, method: httpMethod, data }, log))) {
+        if (!(await approveSpend(ask, 'circle_pay_service', { url, address, method: httpMethod, data: parsedData }, log))) {
           return { denied: true, message: 'Payment rejected by user.' };
         }
 
@@ -363,7 +400,7 @@ export function buildTools(ask: AskFn) {
         if (!deployed.ok) return { error: deployed.message };
 
         try {
-          const result = await payService({ url, address, data, method: httpMethod, chain });
+          const result = await payService({ url, address, data: parsedData, method: httpMethod, chain });
           const tx = (result as { txHash?: string }).txHash
             ? ` txHash=${(result as { txHash?: string }).txHash}`
             : '';
@@ -376,6 +413,7 @@ export function buildTools(ask: AskFn) {
       },
     }),
 
+
     circle_gateway_deposit: tool({
       description: TOOL_DESCRIPTIONS.circle_gateway_deposit,
       parameters: z.object({
@@ -383,11 +421,18 @@ export function buildTools(ask: AskFn) {
         address: z.string().describe('Agent wallet address to deposit from (0x...).'),
         method: z
           .enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
-          .optional()
           .describe(
             "HTTP method the service expects, copied from circle_inspect_service's `method` " +
               "field. Needed so the seller's Gateway requirement is read with the right " +
               'method (a POST-only endpoint answers 405 to a GET probe). Defaults to GET.',
+          ),
+        deposit_method: z
+          .enum(['eco', 'direct'])
+          .describe(
+            '"eco" routes Base→Polygon Gateway (~30-50 s, $0.03 flat fee) — the right ' +
+              'default for nearly all cases. "direct" deposits on-chain on the source chain ' +
+              '(~13-19 min on Base, ~8 s on Polygon/Avalanche). Only use "direct" when the ' +
+              'source is not Base, the seller requires a non-Polygon chain, or explicitly requested.',
           ),
         amount: z
           .number()
