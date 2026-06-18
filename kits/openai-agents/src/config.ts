@@ -1,13 +1,12 @@
 import 'dotenv/config';
 
 export interface KitConfig {
-  chain: string;
   openaiApiKey: string;
   /** OpenAI model name. Override via LLM_MODEL env var. */
   model: string;
 }
 
-const DEFAULT_MODEL = 'gpt-4.1';
+const DEFAULT_MODEL = 'gpt-5.4';
 
 /**
  * Load kit configuration from environment variables.
@@ -15,10 +14,13 @@ const DEFAULT_MODEL = 'gpt-4.1';
  * This kit uses the OpenAI Agents SDK, which only supports OpenAI-compatible
  * models. Set LLM_MODEL to switch between models (e.g. "gpt-4o", "gpt-4o-mini").
  * For a multi-provider kit, see the langchain or claude-agent-sdk kits instead.
+ *
+ * The chain is selected automatically per service at payment time (Base
+ * preferred, Polygon fallback), so there is no chain to configure here.
  */
 export function loadConfig(): KitConfig {
-  const chain = process.env['CIRCLE_CHAIN'] ?? 'BASE';
-  const openaiApiKey = process.env['OPENAI_API_KEY']?.trim();
+  const env = process.env;
+  const openaiApiKey = env.OPENAI_API_KEY?.trim();
 
   if (!openaiApiKey) {
     throw new Error(
@@ -29,8 +31,7 @@ export function loadConfig(): KitConfig {
   }
 
   return {
-    chain,
     openaiApiKey,
-    model: process.env['LLM_MODEL'] ?? DEFAULT_MODEL,
+    model: env.LLM_MODEL?.trim() || DEFAULT_MODEL,
   };
 }

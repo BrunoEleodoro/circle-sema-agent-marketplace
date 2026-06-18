@@ -1,78 +1,87 @@
 import 'dotenv/config';
 import { createInterface } from 'node:readline/promises';
 import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
-import { onboardingWorkflow } from './workflow';
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
 import { withRetry } from './retry';
-import { bold, kitLine } from './theme';
-
-const INITIAL_PROMPT =
-  'Run curl -sL https://agents.circle.com/skills/setup.md, and use the returned setup instructions to set up my agent wallet.';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
+import { bold, dim, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
   console.log(kitLine(line));
 }
 
+type ChatMessage = { role: 'user'; content: string } | { role: 'assistant'; content: string };
+
+// Open readline only for the duration of a single question so it never owns the
+// TTY while the agent streams. `exit` typed at ANY prompt (chat input or an
+// approval [y/N]) halts the demo immediately, before the answer reaches the caller.
 async function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await rl.question(question);
-  rl.close();
-  return answer.trim();
+  try {
+    const answer = await rl.question(question);
+    if (answer.trim().toLowerCase() === 'exit') {
+      log('exit, halting.');
+      process.exit(0);
+    }
+    return answer;
+  } finally {
+    rl.close();
+  }
 }
 
 async function main(): Promise<void> {
-  log('starting Circle Agent Stack onboarding demo');
+  log('Autonomous Payment Agent demo starting');
   const config = loadConfig();
-  log(`chain=${config.chain} provider=${config.provider} model=${config.model}`);
+  log(`chain=BASE provider=${config.provider} model=${config.model}`);
+  log(dim('tip: type "exit" at any prompt to quit'));
 
+  // Inline auth: ensure a valid Circle CLI session before the agent runs. Logs
+  // in with email + OTP if needed; a pending Terms gate is reported as a manual
+  // step (the kit never accepts the Terms of Use on the user's behalf).
   await ensureSession({ ask, log, bold });
 
-  const run = await onboardingWorkflow.createRun();
-  let result = await run.start({ inputData: {} });
+  // setup.md drives the first turn; there is no hand-written bootstrap flow.
+  const bootstrapPrompt = BOOTSTRAP_PROMPT;
 
-  while (result.status === 'suspended') {
-    const suspendedEntry = Object.entries(result.steps).find(([, s]) => s.status === 'suspended');
-    if (!suspendedEntry) break;
-    const [stepId, stepResult] = suspendedEntry;
-    const payload = (stepResult as any).suspendPayload as { prompt: string } | undefined;
-    if (!payload?.prompt) break;
-    const value = await ask(`\n${payload.prompt}\n> `);
-    result = await run.resume({ step: stepId, resumeData: { value } });
-  }
-
-  if (result.status !== 'success') {
-    console.error(`[mastra-kit] workflow ended with status: ${result.status}`);
-    return;
-  }
-
-  const summary: string =
-    (result as any).result?.summary ??
-    (result as any).steps?.agent?.output?.summary ??
-    '(no output)';
-  console.log(summary);
-
-  log('continue the conversation — type "exit" to quit');
+  // Built after `ask` exists: the agent's two spend tools pause for human
+  // approval through it, and circle_login prompts for email + OTP through it.
   const agent = buildAgent(config, ask);
-  const messages: Array<{ role: 'user'; content: string } | { role: 'assistant'; content: string }> = [
-    { role: 'user', content: INITIAL_PROMPT },
-    { role: 'assistant', content: summary },
-  ];
+
+  // Interactive chat loop. The first turn runs the bootstrap prompt; after the
+  // agent settles, the user drives follow-up turns. The full message history is
+  // passed back on each turn, so the agent keeps context. Empty input or
+  // `exit` / `quit` ends the session.
+  log('invoking agent ...');
+  const messages: ChatMessage[] = [{ role: 'user', content: bootstrapPrompt }];
 
   while (true) {
-    const input = await ask(`\n${bold('You:')}\n> `);
-    if (!input || input.toLowerCase() === 'exit') break;
-    messages.push({ role: 'user', content: input });
     const response = await withRetry(() => agent.generate(messages, { maxSteps: 30 }), 'agent');
     const text = response.text ?? '(no output)';
     console.log('\n' + text + '\n');
     messages.push({ role: 'assistant', content: text });
-  }
 
-  log('onboarding complete');
+    const input = (await ask(`\n${bold('You:')}\n> `)).trim();
+    if (!input || input.toLowerCase() === 'quit') {
+      log('done.');
+      break;
+    }
+    messages.push({ role: 'user', content: input });
+  }
 }
 
 main().catch((err: unknown) => {
-  console.error('[mastra-kit] fatal error:', err instanceof Error ? err.message : err);
+  const message = err instanceof Error ? err.message : String(err);
+  // A 529 means the LLM provider is overloaded after exhausting retries: it is
+  // transient and not a kit bug, so say so plainly instead of dumping raw JSON.
+  const overloaded = (err as { status?: number })?.status === 529 || message.includes('529');
+  if (overloaded) {
+    console.error(
+      kitLine(red('FATAL: the LLM provider is overloaded (HTTP 529) and retries were exhausted.')),
+    );
+    console.error(kitLine(yellow('This is transient on the provider side. Re-run in a moment.')));
+  } else {
+    console.error(kitLine(red(`FATAL: ${message}`)));
+  }
   process.exit(1);
 });

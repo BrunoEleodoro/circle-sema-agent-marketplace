@@ -1,3 +1,8 @@
+// Fetches the Circle Agent skill markdown that drives a kit's behavior at
+// runtime: the setup skill (the agent's first turn) and the named sub-skills it
+// pulls on demand. Single-sourced here so every kit hits the same URLs and skill
+// names. Network only; no state.
+
 export const SKILLS_BASE_URL = 'https://agents.circle.com/skills';
 export const SETUP_SKILL_URL = `${SKILLS_BASE_URL}/setup.md`;
 

@@ -4,66 +4,40 @@
 
 An Autonomous Payment Agent built with the [OpenAI Agents SDK](https://openai.github.io/openai-agents-js/guides/agents/). From a single TypeScript entry point, the agent bootstraps via the Circle Agent Skill, creates an agent wallet on BASE, checks balances, discovers an x402-compatible service on the Circle Agent Marketplace, and pays for it using a USDC nanopayment.
 
+This is the sibling of the [LangChain Deep Agents kit](../langchain) and the [Claude Agent SDK kit](../claude-agent-sdk): same Autonomous Payment Agent scenario, same shared [`circle-tools`](../../packages/circle-tools) package, so you can compare how each framework approaches the same problem.
+
 ## Prerequisites
 
-- Node.js 20+
-- Circle CLI: `npm install -g @circle-fin/cli`
-- Circle Agent Skill installed for your agent host (see [Skill install](#skill-install))
-- A Circle API key and an `OPENAI_API_KEY`
+- [Bun](https://bun.com) 1.2+
+- An `OPENAI_API_KEY`. The OpenAI Agents SDK only supports OpenAI-compatible
+  models; for Anthropic models use the [langchain](../langchain) or
+  [claude-agent-sdk](../claude-agent-sdk) kit.
 
 ## Quickstart
 
 ```bash
-git clone <repo-url> && cd circle-agent-stack-examples
+git clone <repo-url> && cd agent-stack-ecosystem-kits
 bun install
 cp kits/openai-agents/.env.example kits/openai-agents/.env   # then fill in keys
-bun --filter @agent-stack-ecosystem-kits/kit-openai-agents demo
+bun run --cwd kits/openai-agents demo
 ```
 
-## Skill reference
+> Run the demo with `--cwd`, not `bun --filter`. `--filter` wraps output in a
+> dashboard that elides lines and interferes with the interactive prompt;
+> `--cwd` runs the script directly with plain, full output.
 
-The agent boots from the official setup skill:
+### Environment
 
-> Run `curl -sL https://agents.circle.com/skills/setup.md`, and use the returned setup instructions to set up my agent wallet.
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | yes | The OpenAI Agents SDK only supports OpenAI-compatible models; the run errors at startup if it is unset. |
+| `LLM_MODEL` | no | Overrides the default model (`gpt-5.4`). Any OpenAI model id works, e.g. `gpt-4o`, `gpt-4o-mini`. |
+| `NO_COLOR` | no | Set to disable colored output. Color is auto-disabled when output is piped or redirected. |
 
-See https://agents.circle.com/skills/setup.md.
-
-### Skill install
-
-```bash
-npm install -g @circle-fin/cli
-circle login
-circle skill install --tool claude-code   # or: cursor | codex | opencode | amp
-
-# Universal fallback (any host):
-npx skills add circlefin/skills -g
-```
-
-## Architecture
-
-```
-┌─────────────────────────────┐
-│   OpenAI Agents SDK         │
-│   (tool-calling loop)       │
-└──────────────┬──────────────┘
-               │ tool calls
-               ▼
-┌─────────────────────────────┐
-│  @.../circle-tools          │
-│  (execSync → circle CLI)    │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Circle Agent Stack         │
-│  wallets · services · x402  │
-└─────────────────────────────┘
-```
+The kit pays on Base by default and falls back to Polygon when a service offers no Base payment option. The chain is selected automatically per service, so there is nothing to configure.
 
 ## Links
 
 - OpenAI Agents SDK: [docs](https://openai.github.io/openai-agents-js/guides/agents/), [GitHub](https://github.com/openai/openai-agents-js)
 - [Circle Agent Stack](https://developers.circle.com/agent-stack)
 - [Circle Agent Marketplace](https://agents.circle.com/services)
-- [Circle CLI reference](https://developers.circle.com/agent-stack/circle-cli/command-reference)
-- [Circle Developer Discord](https://discord.com/invite/buildoncircle)

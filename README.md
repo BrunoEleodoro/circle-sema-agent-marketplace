@@ -13,9 +13,10 @@ Open-source example projects integrating the [Circle Agent Stack](https://develo
 | [`kits/vercel-ai`](./kits/vercel-ai) | Vercel AI SDK | https://sdk.vercel.ai/docs |
 | [`kits/google-adk`](./kits/google-adk) | Google Agent Development Kit | https://adk.dev/get-started/typescript/ |
 
-## Shared package
+## Shared packages
 
 - [`packages/circle-tools`](./packages/circle-tools): framework-agnostic wrappers around the Circle CLI (wallets, balances, service discovery, x402 payments).
+- [`packages/kit-core`](./packages/kit-core): framework-agnostic building blocks layered on `circle-tools` (skill fetching, single-sourced tool descriptions, payment preflight/approval helpers, terminal theme).
 
 ## Repository layout
 
@@ -29,7 +30,8 @@ agent-stack-ecosystem-kits/
 │   ├── openai-agents/
 │   └── vercel-ai/
 └── packages/
-    └── circle-tools/         # shared, framework-agnostic
+    ├── circle-tools/         # shared Circle CLI wrappers
+    └── kit-core/             # shared building blocks (skills, tool copy, payment helpers, theme)
 ```
 
 ## Prerequisites
@@ -40,7 +42,8 @@ agent-stack-ecosystem-kits/
 - Circle Agent Skills (one of):
   - `circle skill install --tool <claude-code|cursor|codex|opencode|amp>`
   - Universal fallback: `bunx skills add circlefin/skills -g`
-- A Circle account and API key
+- A Circle account (authentication is handled by the Circle CLI on first run; there is no Circle API key)
+- An LLM provider API key for whichever kit you run (Anthropic, OpenAI, or Google, per that kit's README)
 
 ## Install
 

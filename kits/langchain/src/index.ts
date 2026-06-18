@@ -6,7 +6,7 @@ import { ensureSession } from '@agent-stack-ecosystem-kits/circle-tools';
 
 import { buildAgent } from './agent';
 import { loadConfig } from './config';
-import { SETUP_SKILL_URL } from './skill';
+import { BOOTSTRAP_PROMPT } from '@agent-stack-ecosystem-kits/kit-core/tools';
 import { bold, colorizeJson, dim, green, heading, kitLine, red, yellow } from './theme';
 
 function log(line: string): void {
@@ -142,10 +142,7 @@ async function main(): Promise<void> {
   log(`chain=BASE provider=${config.provider} model=${config.model}`);
   log(dim('tip: type "exit" at any prompt to quit'));
 
-  // Brief's AGENT BOOTSTRAP PROMPT, verbatim. setup.md drives the first turn.
-  const userPrompt =
-    `Run curl -sL ${SETUP_SKILL_URL}, ` +
-    'and use the returned setup instructions to set up my agent wallet.';
+  const userPrompt = BOOTSTRAP_PROMPT;
 
   // The checkpointer-backed agent needs a thread_id. The same config object is
   // reused on every resume AND on every chat turn, so conversation state held

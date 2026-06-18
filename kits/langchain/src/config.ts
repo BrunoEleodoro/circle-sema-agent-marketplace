@@ -9,7 +9,7 @@ export interface KitConfig {
 }
 
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.4';
 
 export function loadConfig(): KitConfig {
   const env = process.env;

@@ -8,7 +8,6 @@ export interface ProviderConfig {
 }
 
 export interface KitConfig extends ProviderConfig {
-  chain: string;
   /**
    * If both ANTHROPIC_API_KEY and OPENAI_API_KEY are set, this is populated
    * with the secondary provider so the kit can fall back automatically when
@@ -18,7 +17,7 @@ export interface KitConfig extends ProviderConfig {
 }
 
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const DEFAULT_OPENAI_MODEL = 'gpt-4.1';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.4';
 
 /**
  * Load kit configuration from environment variables.
@@ -30,18 +29,19 @@ const DEFAULT_OPENAI_MODEL = 'gpt-4.1';
  *
  * LLM_MODEL overrides the primary model only (no provider prefix needed,
  * e.g. "claude-opus-4-7" or "gpt-4o-mini").
+ *
+ * The chain is selected automatically per service at payment time (Base
+ * preferred, Polygon fallback), so there is no chain to configure here.
  */
 export function loadConfig(): KitConfig {
-  const chain = process.env['CIRCLE_CHAIN'] ?? 'BASE';
   const env = process.env;
-  const anthropicKey = env['ANTHROPIC_API_KEY']?.trim();
-  const openaiKey = env['OPENAI_API_KEY']?.trim();
+  const anthropicKey = env.ANTHROPIC_API_KEY?.trim();
+  const openaiKey = env.OPENAI_API_KEY?.trim();
 
   if (anthropicKey) {
     return {
-      chain,
       provider: 'anthropic',
-      model: env['LLM_MODEL'] ?? DEFAULT_ANTHROPIC_MODEL,
+      model: env.LLM_MODEL?.trim() || DEFAULT_ANTHROPIC_MODEL,
       fallback: openaiKey
         ? { provider: 'openai', model: DEFAULT_OPENAI_MODEL }
         : undefined,
@@ -50,9 +50,8 @@ export function loadConfig(): KitConfig {
 
   if (openaiKey) {
     return {
-      chain,
       provider: 'openai',
-      model: env['LLM_MODEL'] ?? DEFAULT_OPENAI_MODEL,
+      model: env.LLM_MODEL?.trim() || DEFAULT_OPENAI_MODEL,
     };
   }
 
