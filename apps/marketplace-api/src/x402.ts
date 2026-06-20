@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
 import { walletFromAuthorizationHeader } from './auth';
+import { marketplaceTreasuryWallet } from './config';
 import { getDeliverable, getListing, recordPurchase, type MarketplaceDb } from './db';
+import { deliverableJson, purchaseJson, reviewPromptJson } from './presenters';
 
 interface PaidRequest extends Request {
   payment?: {
@@ -22,12 +24,17 @@ function testPaymentsEnabled(): boolean {
   return process.env.MARKETPLACE_X402_DISABLED === '1';
 }
 
+function paymentRecipientFor(listing: { seller_wallet: string }): string {
+  return marketplaceTreasuryWallet() ?? listing.seller_wallet;
+}
+
 function paymentRequired(res: Response, listing: { id: string; price_usd: number; seller_wallet: string }): void {
   res.status(402).json({
     error: 'Payment required.',
     listingId: listing.id,
     priceUsd: listing.price_usd,
     sellerWallet: listing.seller_wallet,
+    paymentRecipientWallet: paymentRecipientFor(listing),
     testPaymentHeader: 'x-test-paid-wallet',
   });
 }
@@ -44,11 +51,6 @@ function deliverPaidContent(
   paymentPayer?: string,
 ): void {
   const deliverable = getDeliverable(db, listing.id);
-  if (!deliverable) {
-    res.status(404).json({ error: 'Deliverable not found.' });
-    return;
-  }
-
   const purchase = recordPurchase(db, {
     listingId: listing.id,
     buyerWallet,
@@ -57,74 +59,61 @@ function deliverPaidContent(
     network,
     transactionHash,
     paymentReceipt,
+    paymentRecipientWallet: paymentRecipientFor(listing),
+    hasImmediateDeliverable: Boolean(deliverable),
   });
-
-  res.type(deliverable.mime_type).json({
+  const baseResponse = {
     listingId: listing.id,
     purchaseId: purchase.id,
-    contentHash: deliverable.content_hash,
-    mimeType: deliverable.mime_type,
-    deliverable: {
-      kind: deliverable.kind,
-      mimeType: deliverable.mime_type,
-      contentHash: deliverable.content_hash,
-      payload: deliverable.payload,
-      filename: deliverable.filename,
-      uri: deliverable.uri,
-      repositoryUrl: deliverable.repository_url,
-      instructions: deliverable.instructions,
-      checksum: deliverable.checksum,
-    },
-    payload: deliverable.payload,
-    reviewPrompt: {
-      purchaseId: purchase.id,
-      sellerWallet: listing.seller_wallet,
-      questions: [
-        {
-          field: 'dataVerified',
-          type: 'boolean',
-          prompt: 'Does the delivered data, file, repository, dataset, or information appear real and usable?',
-        },
-        {
-          field: 'matchesDescription',
-          type: 'boolean',
-          prompt: 'Does the delivered item match the listing description and proof summary?',
-        },
-        {
-          field: 'score',
-          type: 'integer',
-          min: 1,
-          max: 5,
-          prompt: 'Rate the seller from 1 to 5.',
-        },
-        {
-          field: 'text',
-          type: 'string',
-          prompt: 'Write a short review explaining the data quality and seller rating.',
-        },
-      ],
-      submit: {
-        method: 'POST',
-        path: '/api/reviews',
-        requiresBuyerBearerToken: true,
-      },
-    },
+    purchase: purchaseJson(purchase),
+    deliveryStatus: purchase.delivery_status,
+    sellerFulfillment:
+      purchase.delivery_status === 'awaiting_seller'
+        ? {
+            status: 'awaiting_seller',
+            submit: {
+              method: 'POST',
+              path: `/api/purchases/${purchase.id}/fulfill`,
+              requiresSellerBearerToken: true,
+            },
+            buyerDelivery: {
+              method: 'GET',
+              path: `/api/purchases/${purchase.id}/deliverable`,
+              requiresBuyerBearerToken: true,
+            },
+          }
+        : null,
     receipt: {
       buyerWallet,
       paymentPayer,
       sellerWallet: listing.seller_wallet,
+      paymentRecipientWallet: paymentRecipientFor(listing),
       amountUsd: listing.price_usd,
       network,
       transactionHash,
       paymentReceipt,
     },
+  };
+
+  if (!deliverable) {
+    res.json(baseResponse);
+    return;
+  }
+
+  res.type(deliverable.mime_type).json({
+    ...baseResponse,
+    contentHash: deliverable.content_hash,
+    mimeType: deliverable.mime_type,
+    deliverable: deliverableJson(deliverable),
+    payload: deliverable.payload,
+    reviewPrompt: reviewPromptJson(purchase),
   });
 }
 
 function productionGatewayFor(listing: NonNullable<ReturnType<typeof getListing>>) {
   const facilitatorUrl = process.env.CIRCLE_GATEWAY_FACILITATOR_URL ?? 'https://gateway-api.circle.com';
   return createGatewayMiddleware({
-    sellerAddress: listing.seller_wallet,
+    sellerAddress: paymentRecipientFor(listing),
     facilitatorUrl,
   });
 }

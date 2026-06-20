@@ -25,7 +25,16 @@ export function sessionSecret(): string {
   return process.env.MARKETPLACE_SESSION_SECRET ?? 'marketplace-dev-secret';
 }
 
+export function marketplaceTreasuryWallet(): string | null {
+  const raw = process.env.MARKETPLACE_TREASURY_WALLET?.trim();
+  return raw ? raw.toLowerCase() : null;
+}
+
+export function marketplaceAdminToken(): string | null {
+  const raw = process.env.MARKETPLACE_ADMIN_TOKEN?.trim();
+  return raw || null;
+}
+
 export function nowMs(): number {
   return Date.now();
 }
-

@@ -285,6 +285,112 @@ export const buyListingTool = tool({
   },
 });
 
+export const getPurchaseDeliveryTool = tool({
+  name: 'get_purchase_delivery',
+  description:
+    'Fetch a paid purchase deliverable after checkout. If the seller has not fulfilled yet, returns the pending delivery status.',
+  parameters: z.object({
+    authToken: z.string().describe('Marketplace bearer token for the buyer or seller.'),
+    purchaseId: z.string().describe('Purchase id returned by buy_listing.'),
+  }),
+  execute: async ({ authToken, purchaseId }) => {
+    const result = await apiRequest(
+      'get_purchase_delivery',
+      'GET',
+      `/api/purchases/${purchaseId}/deliverable`,
+      undefined,
+      authToken,
+    );
+    return JSON.stringify(result);
+  },
+});
+
+export const fulfillPurchaseTool = tool({
+  name: 'fulfill_purchase',
+  description:
+    'Seller-only tool to deliver the promised information, file handoff, repository, dataset, or link for a paid purchase.',
+  parameters: z.object({
+    authToken: z.string().describe('Marketplace bearer token for the seller wallet.'),
+    purchaseId: z.string().describe('Purchase id from the checkout response.'),
+    deliverableKind: deliverableKindEnum.optional().describe('Deliverable kind. Defaults to text.'),
+    deliverablePayload: z.string().describe('Payload, access note, handoff data, or concise delivery text.'),
+    mimeType: z.string().optional().describe('Deliverable MIME type. Defaults to text/plain.'),
+    filename: z.string().optional().describe('Filename when the deliverable is a file or dataset.'),
+    uri: z.string().optional().describe('Post-checkout URI for a file, dataset, or link deliverable.'),
+    repositoryUrl: z.string().optional().describe('Post-checkout repository URL for repository deliverables.'),
+    instructions: z.string().optional().describe('Post-checkout access or usage instructions.'),
+    checksum: z.string().optional().describe('Optional checksum for file or dataset deliverables.'),
+  }),
+  execute: async ({
+    authToken,
+    purchaseId,
+    deliverableKind,
+    deliverablePayload,
+    mimeType,
+    filename,
+    uri,
+    repositoryUrl,
+    instructions,
+    checksum,
+  }) => {
+    const result = await apiRequest(
+      'fulfill_purchase',
+      'POST',
+      `/api/purchases/${purchaseId}/fulfill`,
+      {
+        deliverable: {
+          kind: deliverableKind ?? 'text',
+          payload: deliverablePayload,
+          mimeType: mimeType ?? 'text/plain',
+          filename,
+          uri,
+          repositoryUrl,
+          instructions,
+          checksum,
+        },
+      },
+      authToken,
+    );
+    return JSON.stringify(result);
+  },
+});
+
+export const listPendingPayoutsTool = tool({
+  name: 'list_pending_payouts',
+  description:
+    'Marketplace-admin tool to list purchases whose seller payout is waiting for delivery or release.',
+  parameters: z.object({
+    adminToken: z.string().describe('Marketplace admin token.'),
+  }),
+  execute: async ({ adminToken }) => {
+    const result = await apiRequest('list_pending_payouts', 'GET', '/api/payouts/pending', undefined, adminToken);
+    return JSON.stringify(result);
+  },
+});
+
+export const markSellerPayoutPaidTool = tool({
+  name: 'mark_seller_payout_paid',
+  description:
+    'Marketplace-admin tool to record a completed seller payout transfer after the operator has moved USDC from the treasury wallet.',
+  needsApproval: true,
+  parameters: z.object({
+    adminToken: z.string().describe('Marketplace admin token.'),
+    purchaseId: z.string().describe('Purchase id whose seller payout was completed.'),
+    transactionHash: z.string().optional().describe('Seller payout transaction hash, if available.'),
+    receipt: z.string().optional().describe('Payout receipt or operator note.'),
+  }),
+  execute: async ({ adminToken, purchaseId, transactionHash, receipt }) => {
+    const result = await apiRequest(
+      'mark_seller_payout_paid',
+      'POST',
+      `/api/payouts/${purchaseId}/mark-paid`,
+      { transactionHash, receipt },
+      adminToken,
+    );
+    return JSON.stringify(result);
+  },
+});
+
 export const reviewListingTool = tool({
   name: 'review_listing',
   description: 'Review a purchased listing. Requires marketplace bearer token from market_auth.',

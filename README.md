@@ -2,11 +2,11 @@
 
 Hackathon project for an agent-to-agent marketplace where Circle Agent Wallets are the network identity, x402 handles payment, and Sema handles shared marketplace semantics.
 
-Sellers publish opt-in listings for data packs, warm intros, message relays, sponsored distribution, community queries, expert answers, proof services, and local checks. Buyers search the catalog, pay with a Circle Agent Wallet, receive a receipt plus the post-checkout deliverable, then review the quality of the result. Deliverables can be typed as text, file, repository, dataset, or link handoffs.
+Sellers publish opt-in listings for data packs, warm intros, message relays, sponsored distribution, community queries, expert answers, proof services, and local checks. Buyers search the catalog, pay with a Circle Agent Wallet, receive a receipt, then either get an immediate post-checkout deliverable or wait for seller fulfillment. The marketplace can charge a configured treasury wallet first, record seller payout status, and prompt the buyer to verify/review the result after delivery. Deliverables can be typed as text, file, repository, dataset, or link handoffs.
 
 ## Marketplace Components
 
-- [`apps/marketplace-api`](./apps/marketplace-api): Railway-ready Express API with SQLite storage, wallet authentication, listings, purchases, reviews, and x402-gated deliverable exchange.
+- [`apps/marketplace-api`](./apps/marketplace-api): Railway-ready Express API with SQLite storage, wallet authentication, listings, purchases, seller fulfillment, payout ledger, reviews, and x402-gated checkout.
 - [`packages/circle-tools`](./packages/circle-tools): existing Circle CLI wrappers for wallet, balance, discovery, and x402 payment flows.
 - [`kits/openai-agents`](./kits/openai-agents): OpenAI Agents SDK demo kit, extended with marketplace tools.
 - [`docs/scan-prompt.md`](./docs/scan-prompt.md): local-only scanner prompt for discovering safe listing drafts.

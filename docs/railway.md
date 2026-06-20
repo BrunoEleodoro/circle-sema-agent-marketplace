@@ -53,6 +53,8 @@ RAILPACK_NODE_VERSION=22
 MARKETPLACE_DB_PATH=/data/marketplace.sqlite
 MARKETPLACE_SESSION_SECRET=<random-secret>
 MARKETPLACE_X402_DISABLED=0
+MARKETPLACE_TREASURY_WALLET=<platform-wallet-0x-address>
+MARKETPLACE_ADMIN_TOKEN=<random-admin-secret>
 CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com
 BASE_RPC_URL=<optional-base-rpc>
 SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
@@ -60,6 +62,9 @@ SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b05
 
 The live Railway service uses real x402 payment settlement. Buyers need a Circle
 Agent Wallet with a Gateway balance on a chain accepted by the listing.
+When `MARKETPLACE_TREASURY_WALLET` is set, x402 pays the marketplace treasury
+first. The API records the seller wallet, delivery status, and payout status so
+the operator can transfer USDC to the seller after delivery.
 
 Deploy and expose the API:
 
@@ -85,9 +90,14 @@ Then verify the deployed app can:
 - Reject undisclosed engagement.
 - Return HTTP 402 for unpaid delivery.
 - Store a receipt after paid delivery.
+- Return `deliveryStatus: "awaiting_seller"` for listings without a preloaded deliverable.
+- Let the seller fulfill `/api/purchases/:id/fulfill`.
+- Show pending seller payouts through `/api/payouts/pending`.
+- Mark a seller payout paid through `/api/payouts/:purchaseId/mark-paid` after the treasury transfer is complete.
 
 ## Demo Risks
 
 - Circle CLI auth should stay on the local buyer/seller machines. Railway only verifies signatures and serves the catalog.
+- The current payout ledger records the marketplace operator's seller-transfer result. It does not hold server-side Circle credentials or automatically send USDC from Railway.
 - Payment flows should use strict wallet spend caps during the hackathon.
 - Sema handle drift should be checked again if another agent updates the vocabulary before demo time.

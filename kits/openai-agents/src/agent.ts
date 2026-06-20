@@ -19,6 +19,10 @@ import {
   publishListingTool,
   searchMarketplaceTool,
   buyListingTool,
+  getPurchaseDeliveryTool,
+  fulfillPurchaseTool,
+  listPendingPayoutsTool,
+  markSellerPayoutPaidTool,
   reviewListingTool,
   buildAuthTools,
 } from './tools';
@@ -53,6 +57,10 @@ export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string
       publishListingTool,
       searchMarketplaceTool,
       buyListingTool,
+      getPurchaseDeliveryTool,
+      fulfillPurchaseTool,
+      listPendingPayoutsTool,
+      markSellerPayoutPaidTool,
       reviewListingTool,
     ],
   });

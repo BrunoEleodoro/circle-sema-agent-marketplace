@@ -16,6 +16,8 @@ export const riskLevels = ['low', 'medium', 'high'] as const;
 
 export const deliveryModes = ['markdown', 'json', 'csv', 'zip', 'intro_service', 'relay', 'text'] as const;
 export const deliverableKinds = ['text', 'file', 'repository', 'dataset', 'link'] as const;
+export const deliveryStatuses = ['awaiting_seller', 'delivered'] as const;
+export const payoutStatuses = ['not_required', 'awaiting_delivery', 'pending_release', 'paid'] as const;
 
 export const semaContextSchema = z
   .object({
@@ -24,6 +26,34 @@ export const semaContextSchema = z
     contextHash: z.string().optional(),
   })
   .default({ semaRoot: SEMA_ROOT, handles: [...SEMA_HANDLES] });
+
+export const deliverableSchema = z
+  .object({
+    kind: z.enum(deliverableKinds).default('text'),
+    payload: z.string().min(1).max(200_000),
+    mimeType: z.string().min(3).max(120).default('text/plain'),
+    filename: z.string().min(1).max(180).optional(),
+    uri: z.string().url().optional(),
+    repositoryUrl: z.string().url().optional(),
+    instructions: z.string().min(1).max(2000).optional(),
+    checksum: z.string().min(8).max(160).optional(),
+  })
+  .superRefine((deliverable, ctx) => {
+    if (deliverable.kind === 'file' && !deliverable.filename && !deliverable.uri) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'file deliverables require filename or uri.',
+        path: ['filename'],
+      });
+    }
+    if (deliverable.kind === 'repository' && !deliverable.repositoryUrl && !deliverable.uri) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'repository deliverables require repositoryUrl or uri.',
+        path: ['repositoryUrl'],
+      });
+    }
+  });
 
 export const createListingSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]{2,80}$/).optional(),
@@ -38,34 +68,7 @@ export const createListingSchema = z.object({
   policyFlags: z.array(z.string().min(1)).default([]),
   semaContext: semaContextSchema,
   expiresAt: z.number().int().positive().optional(),
-  deliverable: z
-    .object({
-      kind: z.enum(deliverableKinds).default('text'),
-      payload: z.string().min(1).max(200_000),
-      mimeType: z.string().min(3).max(120).default('text/plain'),
-      filename: z.string().min(1).max(180).optional(),
-      uri: z.string().url().optional(),
-      repositoryUrl: z.string().url().optional(),
-      instructions: z.string().min(1).max(2000).optional(),
-      checksum: z.string().min(8).max(160).optional(),
-    })
-    .superRefine((deliverable, ctx) => {
-      if (deliverable.kind === 'file' && !deliverable.filename && !deliverable.uri) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'file deliverables require filename or uri.',
-          path: ['filename'],
-        });
-      }
-      if (deliverable.kind === 'repository' && !deliverable.repositoryUrl && !deliverable.uri) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'repository deliverables require repositoryUrl or uri.',
-          path: ['repositoryUrl'],
-        });
-      }
-    })
-    .optional(),
+  deliverable: deliverableSchema.optional(),
 });
 
 export const reviewSchema = z.object({
@@ -76,11 +79,26 @@ export const reviewSchema = z.object({
   text: z.string().min(3).max(2000),
 });
 
+export const fulfillPurchaseSchema = z.object({
+  deliverable: deliverableSchema,
+});
+
+export const releasePayoutSchema = z.object({
+  transactionHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  receipt: z.string().min(1).max(10_000).optional(),
+});
+
 export type CreateListingInput = z.input<typeof createListingSchema>;
 export type ParsedListingInput = z.output<typeof createListingSchema>;
+export type DeliverableInput = z.input<typeof deliverableSchema>;
+export type ParsedDeliverableInput = z.output<typeof deliverableSchema>;
+export type FulfillPurchaseInput = z.infer<typeof fulfillPurchaseSchema>;
+export type ReleasePayoutInput = z.infer<typeof releasePayoutSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
 export type ListingType = (typeof listingTypes)[number];
 export type DeliverableKind = (typeof deliverableKinds)[number];
+export type DeliveryStatus = (typeof deliveryStatuses)[number];
+export type PayoutStatus = (typeof payoutStatuses)[number];
 
 export interface ListingRecord {
   id: string;
@@ -109,6 +127,13 @@ export interface PurchaseRecord {
   network: string;
   transaction_hash: string | null;
   payment_receipt: string;
+  payment_recipient_wallet: string | null;
+  delivery_status: DeliveryStatus;
+  delivered_at: number | null;
+  payout_status: PayoutStatus;
+  payout_transaction_hash: string | null;
+  payout_receipt: string | null;
+  payout_released_at: number | null;
   created_at: number;
 }
 

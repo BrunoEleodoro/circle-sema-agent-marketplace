@@ -21,6 +21,11 @@ The default local configuration uses real Circle Gateway x402 delivery with `MAR
 - `GET /api/listings/search?q=&limit=`
 - `GET /api/listings/:id`
 - `GET /api/deliver/:id`
+- `GET /api/purchases/:id`
+- `GET /api/purchases/:id/deliverable`
+- `POST /api/purchases/:id/fulfill`
+- `GET /api/payouts/pending`
+- `POST /api/payouts/:purchaseId/mark-paid`
 - `POST /api/reviews`
 - `GET /api/reputation/:sellerWallet`
 
@@ -49,6 +54,8 @@ circle services pay http://localhost:3000/api/deliver/<listing-id> \
 
 Delivery uses Circle Gateway x402 middleware. Include the buyer marketplace bearer token as an `Authorization` header during payment if the buyer will submit a review.
 
+Set `MARKETPLACE_TREASURY_WALLET=0x...` to make x402 charge the marketplace/platform wallet first. The purchase still records the listing seller as the economic seller. After the seller fulfills delivery, `GET /api/payouts/pending` returns the pending seller payout and a suggested Circle CLI transfer command. `POST /api/payouts/:purchaseId/mark-paid` records the completed seller transfer.
+
 After checkout succeeds, the response includes a `deliverable` object:
 
 ```json
@@ -63,6 +70,27 @@ After checkout succeeds, the response includes a `deliverable` object:
 ```
 
 Supported deliverable kinds are `text`, `file`, `repository`, `dataset`, and `link`.
+
+Listings can also omit the deliverable at publish time. In that case the paid checkout response returns `deliveryStatus: "awaiting_seller"` and a seller fulfillment endpoint:
+
+```json
+{
+  "purchaseId": "uuid",
+  "deliveryStatus": "awaiting_seller",
+  "sellerFulfillment": {
+    "submit": {
+      "method": "POST",
+      "path": "/api/purchases/<purchase-id>/fulfill"
+    },
+    "buyerDelivery": {
+      "method": "GET",
+      "path": "/api/purchases/<purchase-id>/deliverable"
+    }
+  }
+}
+```
+
+The seller calls the fulfill endpoint with a `deliverable` object. The buyer then fetches `/api/purchases/<purchase-id>/deliverable` without paying again.
 
 The response also includes a `reviewPrompt` object. Buyer agents should show the
 delivered item to the user and ask:

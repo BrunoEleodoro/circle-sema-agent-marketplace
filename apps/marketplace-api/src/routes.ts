@@ -1,15 +1,29 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { createAuthChallenge, requireAuth, verifyAuthChallenge, type AuthedRequest } from './auth';
+import { marketplaceAdminToken } from './config';
 import {
   createListing,
   createReview,
+  fulfillPurchase,
+  getDeliverableForPurchase,
   getListing,
+  getPurchase,
   getReputation,
+  listPendingPayouts,
   listListings,
+  releasePayout,
   type MarketplaceDb,
 } from './db';
-import { createListingSchema, reviewSchema, type ListingRecord } from './schema';
+import {
+  createListingSchema,
+  fulfillPurchaseSchema,
+  releasePayoutSchema,
+  reviewSchema,
+  type ListingRecord,
+  type PurchaseRecord,
+} from './schema';
+import { deliverableJson, purchaseJson, reviewPromptJson } from './presenters';
 import { deliverListing } from './x402';
 
 const challengeSchema = z.object({
@@ -47,6 +61,25 @@ function listingJson(row: ListingRecord): Record<string, unknown> {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function canReadPurchase(row: PurchaseRecord, walletAddress: string | undefined): boolean {
+  const wallet = walletAddress?.toLowerCase();
+  return Boolean(wallet && (row.buyer_wallet === wallet || row.seller_wallet === wallet));
+}
+
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
+function adminAuthorized(req: AuthedRequest): boolean {
+  const expected = marketplaceAdminToken();
+  if (!expected) return false;
+  const bearer = req.header('authorization')?.startsWith('Bearer ')
+    ? req.header('authorization')!.slice('Bearer '.length).trim()
+    : '';
+  const header = req.header('x-marketplace-admin-token') ?? '';
+  return bearer === expected || header === expected;
 }
 
 export function createApiRouter(db: MarketplaceDb): Router {
@@ -123,6 +156,87 @@ export function createApiRouter(db: MarketplaceDb): Router {
 
   router.get('/reputation/:sellerWallet', (req, res) => {
     res.json({ reputation: getReputation(db, req.params.sellerWallet ?? '') });
+  });
+
+  router.get('/purchases/:id', requireAuth(db), (req: AuthedRequest, res) => {
+    const purchase = getPurchase(db, routeParam(req.params.id));
+    if (!purchase) {
+      res.status(404).json({ error: 'Purchase not found.' });
+      return;
+    }
+    if (!canReadPurchase(purchase, req.walletAddress)) {
+      res.status(403).json({ error: 'Only the buyer or seller can read this purchase.' });
+      return;
+    }
+    res.json({ purchase: purchaseJson(purchase) });
+  });
+
+  router.get('/purchases/:id/deliverable', requireAuth(db), (req: AuthedRequest, res) => {
+    const purchase = getPurchase(db, routeParam(req.params.id));
+    if (!purchase) {
+      res.status(404).json({ error: 'Purchase not found.' });
+      return;
+    }
+    if (!canReadPurchase(purchase, req.walletAddress)) {
+      res.status(403).json({ error: 'Only the buyer or seller can read this purchase.' });
+      return;
+    }
+    const deliverable = getDeliverableForPurchase(db, purchase);
+    if (!deliverable) {
+      res.status(202).json({
+        purchase: purchaseJson(purchase),
+        deliveryStatus: purchase.delivery_status,
+        sellerFulfillmentPending: true,
+      });
+      return;
+    }
+    res.type(deliverable.mime_type).json({
+      purchase: purchaseJson(purchase),
+      deliverable: deliverableJson(deliverable),
+      payload: deliverable.payload,
+      reviewPrompt: purchase.buyer_wallet === req.walletAddress ? reviewPromptJson(purchase) : null,
+    });
+  });
+
+  router.post('/purchases/:id/fulfill', requireAuth(db), (req: AuthedRequest, res) => {
+    try {
+      const input = fulfillPurchaseSchema.parse(req.body);
+      const result = fulfillPurchase(db, req.walletAddress!, routeParam(req.params.id), input.deliverable);
+      res.status(201).json({
+        purchase: purchaseJson(result.purchase),
+        deliverable: deliverableJson(result.deliverable),
+        buyerDelivery: {
+          method: 'GET',
+          path: `/api/purchases/${result.purchase.id}/deliverable`,
+          requiresBuyerBearerToken: true,
+        },
+      });
+    } catch (e) {
+      const message = (e as Error).message;
+      const status = message.includes('Only the seller') ? 403 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  router.get('/payouts/pending', (req: AuthedRequest, res) => {
+    if (!adminAuthorized(req)) {
+      res.status(401).json({ error: 'Missing or invalid marketplace admin token.' });
+      return;
+    }
+    res.json({ payouts: listPendingPayouts(db).map(purchaseJson) });
+  });
+
+  router.post('/payouts/:purchaseId/mark-paid', (req: AuthedRequest, res) => {
+    if (!adminAuthorized(req)) {
+      res.status(401).json({ error: 'Missing or invalid marketplace admin token.' });
+      return;
+    }
+    try {
+      const input = releasePayoutSchema.parse(req.body);
+      res.json({ purchase: purchaseJson(releasePayout(db, routeParam(req.params.purchaseId), input)) });
+    } catch (e) {
+      res.status(400).json({ error: (e as Error).message });
+    }
   });
 
   router.get('/deliver/:id', deliverListing(db));

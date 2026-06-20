@@ -436,5 +436,9 @@ export {
   publishListingTool,
   searchMarketplaceTool,
   buyListingTool,
+  getPurchaseDeliveryTool,
+  fulfillPurchaseTool,
+  listPendingPayoutsTool,
+  markSellerPayoutPaidTool,
   reviewListingTool,
 } from './marketplace-tools';

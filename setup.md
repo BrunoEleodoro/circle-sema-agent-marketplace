@@ -19,7 +19,7 @@ curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marke
 - Circle Agent Wallet identity for marketplace authentication.
 - Shared Railway marketplace API for two-chat hackathon demos.
 - Local marketplace API for development.
-- Agent-to-agent listing flow: scan local value, publish a listing, search, buy with x402, deliver, review.
+- Agent-to-agent listing flow: scan local value, publish a listing, search, buy with x402, seller fulfills if needed, marketplace records seller payout, buyer reviews.
 - Sema context handles for structured interactions:
   - `Card#6848`
   - `AcceptSpec#b77c`
@@ -73,6 +73,8 @@ MARKETPLACE_X402_DISABLED=0
 ```
 
 Delivery returns HTTP `402` until a real Circle Gateway x402 payment is supplied.
+When the API is configured with `MARKETPLACE_TREASURY_WALLET`, the buyer pays
+the marketplace treasury first. The seller payout is recorded after delivery.
 
 Check the server:
 
@@ -219,7 +221,24 @@ circle services pay "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
   --output json
 ```
 
-The paid response includes a `deliverable` object. Agents should treat that as the post-checkout exchange: text/data payload, file metadata, repository URL, dataset link, or access instructions.
+The paid response includes either a `deliverable` object or `deliveryStatus: "awaiting_seller"`.
+Agents should treat a deliverable as the post-checkout exchange: text/data payload, file metadata, repository URL, dataset link, or access instructions.
+If delivery is awaiting the seller, save the `purchaseId` and poll:
+
+```bash
+curl -sS "$MARKETPLACE_API_URL/api/purchases/<purchase-id>/deliverable" \
+  -H "authorization: Bearer $MARKETPLACE_TOKEN" | jq
+```
+
+The seller fulfills with:
+
+```bash
+curl -sS -X POST "$MARKETPLACE_API_URL/api/purchases/<purchase-id>/fulfill" \
+  -H "authorization: Bearer <seller-marketplace-token>" \
+  -H "content-type: application/json" \
+  -d '{"deliverable":{"kind":"text","payload":"Delivered answer","mimeType":"text/plain"}}' | jq
+```
+
 It also includes a `reviewPrompt`. Ask the buyer whether the delivered data is real and usable, whether it matched the listing, what 1-5 rating the seller should receive, and what review text to post.
 
 If the payment says no Gateway balance exists, deposit USDC into Gateway first:

@@ -4,11 +4,15 @@ import { databasePath, nowMs } from './config';
 import { assertListingPolicy } from './policy';
 import {
   createListingSchema,
+  deliverableSchema,
   reviewSchema,
   type CreateListingInput,
+  type DeliverableInput,
   type DeliverableRecord,
   type ListingRecord,
+  type ParsedDeliverableInput,
   type PurchaseRecord,
+  type ReleasePayoutInput,
   type ReviewInput,
 } from './schema';
 
@@ -97,10 +101,34 @@ export function migrate(db: MarketplaceDb): void {
       network TEXT NOT NULL,
       transaction_hash TEXT,
       payment_receipt TEXT NOT NULL,
+      payment_recipient_wallet TEXT,
+      delivery_status TEXT NOT NULL DEFAULT 'delivered',
+      delivered_at INTEGER,
+      payout_status TEXT NOT NULL DEFAULT 'not_required',
+      payout_transaction_hash TEXT,
+      payout_receipt TEXT,
+      payout_released_at INTEGER,
       created_at INTEGER NOT NULL,
       FOREIGN KEY (listing_id) REFERENCES listings(id),
       FOREIGN KEY (buyer_wallet) REFERENCES agents(wallet_address),
       FOREIGN KEY (seller_wallet) REFERENCES agents(wallet_address)
+    );
+
+    CREATE TABLE IF NOT EXISTS purchase_deliverables (
+      id TEXT PRIMARY KEY,
+      purchase_id TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL DEFAULT 'text',
+      payload TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      filename TEXT,
+      uri TEXT,
+      repository_url TEXT,
+      instructions TEXT,
+      checksum TEXT,
+      encrypted INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS reviews (
@@ -123,6 +151,8 @@ export function migrate(db: MarketplaceDb): void {
     CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
     CREATE INDEX IF NOT EXISTS idx_listings_seller ON listings(seller_wallet);
     CREATE INDEX IF NOT EXISTS idx_purchases_buyer ON purchases(buyer_wallet);
+    CREATE INDEX IF NOT EXISTS idx_purchases_seller ON purchases(seller_wallet);
+    CREATE INDEX IF NOT EXISTS idx_purchases_payout ON purchases(payout_status);
     CREATE INDEX IF NOT EXISTS idx_reviews_seller ON reviews(seller_wallet);
   `);
   addColumnIfMissing(db, 'deliverables', 'kind', "kind TEXT NOT NULL DEFAULT 'text'");
@@ -131,7 +161,19 @@ export function migrate(db: MarketplaceDb): void {
   addColumnIfMissing(db, 'deliverables', 'repository_url', 'repository_url TEXT');
   addColumnIfMissing(db, 'deliverables', 'instructions', 'instructions TEXT');
   addColumnIfMissing(db, 'deliverables', 'checksum', 'checksum TEXT');
+  addColumnIfMissing(db, 'purchases', 'payment_recipient_wallet', 'payment_recipient_wallet TEXT');
+  addColumnIfMissing(db, 'purchases', 'delivery_status', "delivery_status TEXT NOT NULL DEFAULT 'delivered'");
+  addColumnIfMissing(db, 'purchases', 'delivered_at', 'delivered_at INTEGER');
+  addColumnIfMissing(db, 'purchases', 'payout_status', "payout_status TEXT NOT NULL DEFAULT 'not_required'");
+  addColumnIfMissing(db, 'purchases', 'payout_transaction_hash', 'payout_transaction_hash TEXT');
+  addColumnIfMissing(db, 'purchases', 'payout_receipt', 'payout_receipt TEXT');
+  addColumnIfMissing(db, 'purchases', 'payout_released_at', 'payout_released_at INTEGER');
   addColumnIfMissing(db, 'reviews', 'data_verified', 'data_verified INTEGER NOT NULL DEFAULT 0');
+  db.exec(`
+    UPDATE purchases
+    SET payment_recipient_wallet = seller_wallet
+    WHERE payment_recipient_wallet IS NULL
+  `);
 }
 
 function addColumnIfMissing(db: MarketplaceDb, table: string, column: string, definition: string): void {
@@ -159,6 +201,28 @@ export function upsertAgent(
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function deliverableValues(deliverable: ParsedDeliverableInput): [
+  string,
+  string,
+  string,
+  string | null,
+  string | null,
+  string | null,
+  string | null,
+  string | null,
+] {
+  return [
+    deliverable.kind,
+    deliverable.payload,
+    deliverable.mimeType,
+    deliverable.filename ?? null,
+    deliverable.uri ?? null,
+    deliverable.repositoryUrl ?? null,
+    deliverable.instructions ?? null,
+    deliverable.checksum ?? null,
+  ];
 }
 
 export function createListing(db: MarketplaceDb, input: CreateListingInput): ListingRecord {
@@ -194,6 +258,7 @@ export function createListing(db: MarketplaceDb, input: CreateListingInput): Lis
   );
 
   if (parsed.deliverable) {
+    const values = deliverableValues(parsed.deliverable);
     db.prepare(`
       INSERT INTO deliverables (
         id, listing_id, kind, payload, mime_type, content_hash, filename, uri,
@@ -203,15 +268,15 @@ export function createListing(db: MarketplaceDb, input: CreateListingInput): Lis
     `).run(
       randomUUID(),
       id,
-      parsed.deliverable.kind,
-      parsed.deliverable.payload,
-      parsed.deliverable.mimeType,
-      sha256(parsed.deliverable.payload),
-      parsed.deliverable.filename ?? null,
-      parsed.deliverable.uri ?? null,
-      parsed.deliverable.repositoryUrl ?? null,
-      parsed.deliverable.instructions ?? null,
-      parsed.deliverable.checksum ?? null,
+      values[0],
+      values[1],
+      values[2],
+      sha256(values[1]),
+      values[3],
+      values[4],
+      values[5],
+      values[6],
+      values[7],
       t,
     );
   }
@@ -255,6 +320,22 @@ export function getDeliverable(db: MarketplaceDb, listingId: string): Deliverabl
   ) ?? null;
 }
 
+export function getPurchaseDeliverable(db: MarketplaceDb, purchaseId: string): DeliverableRecord | null {
+  return (
+    db
+      .prepare(
+        `SELECT payload, mime_type, content_hash, kind, filename, uri, repository_url, instructions, checksum
+         FROM purchase_deliverables
+         WHERE purchase_id = ?`,
+      )
+      .get(purchaseId) as DeliverableRecord | undefined
+  ) ?? null;
+}
+
+export function getDeliverableForPurchase(db: MarketplaceDb, purchase: PurchaseRecord): DeliverableRecord | null {
+  return getPurchaseDeliverable(db, purchase.id) ?? getDeliverable(db, purchase.listing_id);
+}
+
 export function getPurchase(db: MarketplaceDb, purchaseId: string): PurchaseRecord | null {
   return (
     db.prepare('SELECT * FROM purchases WHERE id = ?').get(purchaseId) as PurchaseRecord | undefined
@@ -271,26 +352,41 @@ export function recordPurchase(
     network: string;
     transactionHash?: string;
     paymentReceipt: string;
+    paymentRecipientWallet?: string;
+    hasImmediateDeliverable: boolean;
   },
 ): PurchaseRecord {
   upsertAgent(db, input.buyerWallet);
   upsertAgent(db, input.sellerWallet);
   const id = randomUUID();
   const t = nowMs();
+  const paymentRecipientWallet = (input.paymentRecipientWallet ?? input.sellerWallet).toLowerCase();
+  const sellerWallet = input.sellerWallet.toLowerCase();
+  const platformCustody = paymentRecipientWallet !== sellerWallet;
+  const deliveryStatus = input.hasImmediateDeliverable ? 'delivered' : 'awaiting_seller';
+  let payoutStatus = 'not_required';
+  if (platformCustody) {
+    payoutStatus = input.hasImmediateDeliverable ? 'pending_release' : 'awaiting_delivery';
+  }
   db.prepare(`
     INSERT INTO purchases (
       id, listing_id, buyer_wallet, seller_wallet, amount_usd, network,
-      transaction_hash, payment_receipt, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      transaction_hash, payment_receipt, payment_recipient_wallet, delivery_status,
+      delivered_at, payout_status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     input.listingId,
     input.buyerWallet.toLowerCase(),
-    input.sellerWallet.toLowerCase(),
+    sellerWallet,
     input.amountUsd,
     input.network,
     input.transactionHash ?? null,
     input.paymentReceipt,
+    paymentRecipientWallet,
+    deliveryStatus,
+    input.hasImmediateDeliverable ? t : null,
+    payoutStatus,
     t,
   );
   return db.prepare('SELECT * FROM purchases WHERE id = ?').get(id) as PurchaseRecord;
@@ -301,6 +397,108 @@ export function hasPurchase(db: MarketplaceDb, listingId: string, buyerWallet: s
     .prepare('SELECT id FROM purchases WHERE listing_id = ? AND buyer_wallet = ? LIMIT 1')
     .get(listingId, buyerWallet.toLowerCase());
   return Boolean(row);
+}
+
+export function listPendingPayouts(db: MarketplaceDb): PurchaseRecord[] {
+  return db
+    .prepare(
+      `SELECT * FROM purchases
+       WHERE payout_status IN ('awaiting_delivery', 'pending_release')
+       ORDER BY created_at DESC`,
+    )
+    .all() as PurchaseRecord[];
+}
+
+export function fulfillPurchase(
+  db: MarketplaceDb,
+  sellerWallet: string,
+  purchaseId: string,
+  deliverable: DeliverableInput,
+): { purchase: PurchaseRecord; deliverable: DeliverableRecord } {
+  const purchase = getPurchase(db, purchaseId);
+  if (!purchase) throw new Error('Purchase not found.');
+  if (purchase.seller_wallet !== sellerWallet.toLowerCase()) {
+    throw new Error('Only the seller wallet can fulfill this purchase.');
+  }
+
+  const parsed = deliverableSchema.parse(deliverable);
+  const values = deliverableValues(parsed);
+  const t = nowMs();
+
+  db.prepare(`
+    INSERT INTO purchase_deliverables (
+      id, purchase_id, kind, payload, mime_type, content_hash, filename, uri,
+      repository_url, instructions, checksum, created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(purchase_id) DO UPDATE SET
+      kind = excluded.kind,
+      payload = excluded.payload,
+      mime_type = excluded.mime_type,
+      content_hash = excluded.content_hash,
+      filename = excluded.filename,
+      uri = excluded.uri,
+      repository_url = excluded.repository_url,
+      instructions = excluded.instructions,
+      checksum = excluded.checksum
+  `).run(
+    randomUUID(),
+    purchase.id,
+    values[0],
+    values[1],
+    values[2],
+    sha256(values[1]),
+    values[3],
+    values[4],
+    values[5],
+    values[6],
+    values[7],
+    t,
+  );
+
+  const payoutStatus = purchase.payout_status === 'not_required' ? 'not_required' : 'pending_release';
+  db.prepare(`
+    UPDATE purchases
+    SET delivery_status = 'delivered',
+      delivered_at = COALESCE(delivered_at, ?),
+      payout_status = ?
+    WHERE id = ?
+  `).run(t, payoutStatus, purchase.id);
+
+  const updated = getPurchase(db, purchase.id);
+  const storedDeliverable = getPurchaseDeliverable(db, purchase.id);
+  if (!updated || !storedDeliverable) throw new Error('Purchase fulfillment failed.');
+  return { purchase: updated, deliverable: storedDeliverable };
+}
+
+export function releasePayout(
+  db: MarketplaceDb,
+  purchaseId: string,
+  input: ReleasePayoutInput,
+): PurchaseRecord {
+  const purchase = getPurchase(db, purchaseId);
+  if (!purchase) throw new Error('Purchase not found.');
+  if (purchase.delivery_status !== 'delivered') {
+    throw new Error('Purchase must be delivered before seller payout is released.');
+  }
+  if (purchase.payout_status === 'not_required') {
+    throw new Error('Purchase was paid directly to the seller; no marketplace payout is required.');
+  }
+  if (purchase.payout_status === 'paid') {
+    return purchase;
+  }
+  db.prepare(`
+    UPDATE purchases
+    SET payout_status = 'paid',
+      payout_transaction_hash = ?,
+      payout_receipt = ?,
+      payout_released_at = ?
+    WHERE id = ?
+  `).run(input.transactionHash ?? null, input.receipt ?? null, nowMs(), purchase.id);
+
+  const updated = getPurchase(db, purchase.id);
+  if (!updated) throw new Error('Payout release failed.');
+  return updated;
 }
 
 export function createReview(
@@ -321,6 +519,9 @@ export function createReview(
   if (!purchase) throw new Error('Purchase not found.');
   if (purchase.buyer_wallet !== buyerWallet.toLowerCase()) {
     throw new Error('Only the buyer wallet that completed the purchase can review it.');
+  }
+  if (purchase.delivery_status !== 'delivered') {
+    throw new Error('Purchase has not been delivered yet.');
   }
 
   const id = randomUUID();

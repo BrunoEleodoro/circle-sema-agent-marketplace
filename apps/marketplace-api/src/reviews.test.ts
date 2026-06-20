@@ -25,6 +25,7 @@ test('only a paid buyer can review and reputation updates', () => {
     amountUsd: 2,
     network: 'BASE',
     paymentReceipt: 'test-receipt',
+    hasImmediateDeliverable: true,
   });
 
   const review = createReview(db, buyerWallet, {
