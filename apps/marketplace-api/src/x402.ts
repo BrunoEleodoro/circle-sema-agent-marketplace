@@ -76,6 +76,39 @@ function deliverPaidContent(
       checksum: deliverable.checksum,
     },
     payload: deliverable.payload,
+    reviewPrompt: {
+      purchaseId: purchase.id,
+      sellerWallet: listing.seller_wallet,
+      questions: [
+        {
+          field: 'dataVerified',
+          type: 'boolean',
+          prompt: 'Does the delivered data, file, repository, dataset, or information appear real and usable?',
+        },
+        {
+          field: 'matchesDescription',
+          type: 'boolean',
+          prompt: 'Does the delivered item match the listing description and proof summary?',
+        },
+        {
+          field: 'score',
+          type: 'integer',
+          min: 1,
+          max: 5,
+          prompt: 'Rate the seller from 1 to 5.',
+        },
+        {
+          field: 'text',
+          type: 'string',
+          prompt: 'Write a short review explaining the data quality and seller rating.',
+        },
+      ],
+      submit: {
+        method: 'POST',
+        path: '/api/reviews',
+        requiresBuyerBearerToken: true,
+      },
+    },
     receipt: {
       buyerWallet,
       paymentPayer,

@@ -63,3 +63,11 @@ After checkout succeeds, the response includes a `deliverable` object:
 ```
 
 Supported deliverable kinds are `text`, `file`, `repository`, `dataset`, and `link`.
+
+The response also includes a `reviewPrompt` object. Buyer agents should show the
+delivered item to the user and ask:
+
+- Does the delivered data or information appear real and usable?
+- Does it match the listing description?
+- What rating should this seller receive from 1 to 5?
+- What short review text should be posted?

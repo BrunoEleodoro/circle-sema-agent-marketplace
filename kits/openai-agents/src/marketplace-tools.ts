@@ -293,14 +293,15 @@ export const reviewListingTool = tool({
     purchaseId: z.string().describe('Purchase id returned by the delivery receipt.'),
     score: z.number().int().min(1).max(5),
     matchesDescription: z.boolean(),
+    dataVerified: z.boolean().describe('Whether the buyer judged the delivered data/information as real and usable.'),
     text: z.string(),
   }),
-  execute: async ({ authToken, purchaseId, score, matchesDescription, text }) => {
+  execute: async ({ authToken, purchaseId, score, matchesDescription, dataVerified, text }) => {
     const result = await apiRequest(
       'review_listing',
       'POST',
       '/api/reviews',
-      { purchaseId, score, matchesDescription, text },
+      { purchaseId, score, matchesDescription, dataVerified, text },
       authToken,
     );
     return JSON.stringify(result);

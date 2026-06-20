@@ -111,6 +111,7 @@ export function migrate(db: MarketplaceDb): void {
       seller_wallet TEXT NOT NULL,
       score INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
       matches_description INTEGER NOT NULL,
+      data_verified INTEGER NOT NULL DEFAULT 0,
       text TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       FOREIGN KEY (purchase_id) REFERENCES purchases(id),
@@ -130,6 +131,7 @@ export function migrate(db: MarketplaceDb): void {
   addColumnIfMissing(db, 'deliverables', 'repository_url', 'repository_url TEXT');
   addColumnIfMissing(db, 'deliverables', 'instructions', 'instructions TEXT');
   addColumnIfMissing(db, 'deliverables', 'checksum', 'checksum TEXT');
+  addColumnIfMissing(db, 'reviews', 'data_verified', 'data_verified INTEGER NOT NULL DEFAULT 0');
 }
 
 function addColumnIfMissing(db: MarketplaceDb, table: string, column: string, definition: string): void {
@@ -305,7 +307,15 @@ export function createReview(
   db: MarketplaceDb,
   buyerWallet: string,
   input: ReviewInput,
-): { id: string; listingId: string; sellerWallet: string; score: number; matchesDescription: boolean; text: string } {
+): {
+  id: string;
+  listingId: string;
+  sellerWallet: string;
+  score: number;
+  matchesDescription: boolean;
+  dataVerified: boolean;
+  text: string;
+} {
   const parsed = reviewSchema.parse(input);
   const purchase = getPurchase(db, parsed.purchaseId);
   if (!purchase) throw new Error('Purchase not found.');
@@ -317,8 +327,8 @@ export function createReview(
   db.prepare(`
     INSERT INTO reviews (
       id, purchase_id, listing_id, buyer_wallet, seller_wallet, score,
-      matches_description, text, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      matches_description, data_verified, text, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     parsed.purchaseId,
@@ -327,6 +337,7 @@ export function createReview(
     purchase.seller_wallet,
     parsed.score,
     parsed.matchesDescription ? 1 : 0,
+    parsed.dataVerified ? 1 : 0,
     parsed.text,
     nowMs(),
   );
@@ -338,6 +349,7 @@ export function createReview(
     sellerWallet: purchase.seller_wallet,
     score: parsed.score,
     matchesDescription: parsed.matchesDescription,
+    dataVerified: parsed.dataVerified,
     text: parsed.text,
   };
 }

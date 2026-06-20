@@ -31,14 +31,15 @@ test('only a paid buyer can review and reputation updates', () => {
     purchaseId: purchase.id,
     score: 5,
     matchesDescription: true,
+    dataVerified: true,
     text: 'Matched the description and was useful.',
   });
 
   assert.equal(review.score, 5);
+  assert.equal(review.dataVerified, true);
   assert.deepEqual(getReputation(db, sellerWallet), {
     walletAddress: sellerWallet,
     reputationScore: 5,
     reviewCount: 1,
   });
 });
-

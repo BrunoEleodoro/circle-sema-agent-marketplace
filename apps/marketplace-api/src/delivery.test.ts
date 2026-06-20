@@ -41,11 +41,17 @@ test('delivery returns 402 until paid and then records a purchase', async (t) =>
     purchaseId?: string;
     payload?: string;
     deliverable?: { kind?: string; payload?: string };
+    reviewPrompt?: { purchaseId?: string; questions?: Array<{ field?: string }> };
   };
   assert.ok(body.purchaseId);
   assert.equal(body.payload, '# Paid Pack');
   assert.equal(body.deliverable?.kind, 'text');
   assert.equal(body.deliverable?.payload, '# Paid Pack');
+  assert.equal(body.reviewPrompt?.purchaseId, body.purchaseId);
+  assert.deepEqual(
+    body.reviewPrompt?.questions?.map((question) => question.field),
+    ['dataVerified', 'matchesDescription', 'score', 'text'],
+  );
 });
 
 test('delivery records authenticated buyer wallet when payment payer differs', async (t) => {

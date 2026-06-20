@@ -72,6 +72,7 @@ export const reviewSchema = z.object({
   purchaseId: z.string().uuid(),
   score: z.number().int().min(1).max(5),
   matchesDescription: z.boolean(),
+  dataVerified: z.boolean().default(false),
   text: z.string().min(3).max(2000),
 });
 

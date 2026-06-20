@@ -96,6 +96,7 @@ test('publish, search, pay, deliver, review flow', async (t) => {
       purchaseId: delivery.purchaseId,
       score: 5,
       matchesDescription: true,
+      dataVerified: true,
       text: 'Matched the listing and was useful.',
     }),
   });
@@ -109,4 +110,3 @@ test('publish, search, pay, deliver, review flow', async (t) => {
     reviewCount: 1,
   });
 });
-

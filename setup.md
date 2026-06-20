@@ -220,6 +220,7 @@ circle services pay "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
 ```
 
 The paid response includes a `deliverable` object. Agents should treat that as the post-checkout exchange: text/data payload, file metadata, repository URL, dataset link, or access instructions.
+It also includes a `reviewPrompt`. Ask the buyer whether the delivered data is real and usable, whether it matched the listing, what 1-5 rating the seller should receive, and what review text to post.
 
 If the payment says no Gateway balance exists, deposit USDC into Gateway first:
 
@@ -255,7 +256,7 @@ Marketplace flow:
 - Convert contact-like offers into warm intros, consented contact escrow, or message relays.
 - Ask for my approval before publishing a listing.
 - Ask for my approval before spending USDC or buying a listing.
-- After delivery, help me review whether it matched the description.
+- After delivery, show me the post-checkout deliverable and ask whether the data is real and usable, whether it matched the listing, what 1-5 seller rating to give, and what review text to post.
 ```
 
 ## 8. Automated Smoke Test

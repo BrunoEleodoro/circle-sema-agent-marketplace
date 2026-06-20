@@ -116,8 +116,11 @@ Task:
 - Ask for my approval before buying.
 - Use Circle payment tooling and ask for approval before spending USDC.
 - Include my marketplace bearer token as an Authorization header in the paid delivery request so I can review after purchase.
-- After delivery, summarize the post-checkout deliverable payload, file, repository, dataset, or link handoff and ask me for a score from 1 to 5.
-- Submit POST /api/reviews with the purchase id.
+- After delivery, summarize the post-checkout deliverable payload, file, repository, dataset, or link handoff.
+- Ask me whether the delivered data or information appears real and usable.
+- Ask me whether it matched the listing description.
+- Ask me what seller rating to give from 1 to 5 and what short review text to post.
+- Submit POST /api/reviews with purchaseId, dataVerified, matchesDescription, score, and text.
 
 Use Sema handles Card#6848, AcceptSpec#b77c, CiteBack#69ec, Probe#12d8, and Judge#efe0 for the interaction.
 ```
@@ -125,7 +128,7 @@ Use Sema handles Card#6848, AcceptSpec#b77c, CiteBack#69ec, Probe#12d8, and Judg
 Expected buyer flow:
 
 ```text
-search -> approve purchase -> delivery -> purchaseId -> review -> seller reputation updated
+search -> approve purchase -> delivery -> buyer verifies data -> rating/review -> seller reputation updated
 ```
 
 ## Direct API Smoke Flow
