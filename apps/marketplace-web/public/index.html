@@ -7,118 +7,237 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="./" aria-label="Circle Sema Market home">
-        <span class="brand-dot brand-blue"></span>
-        <span class="brand-dot brand-red"></span>
-        <span class="brand-dot brand-yellow"></span>
-        <span class="brand-dot brand-green"></span>
-        <span>Circle Sema Market</span>
-      </a>
-      <button class="ghost-button" id="copySetupButton" type="button">Copy setup</button>
-    </header>
+    <div class="app-frame">
+      <aside class="side-rail" aria-label="Marketplace navigation">
+        <a class="rail-logo" href="./" aria-label="Circle Sema Market home">CS</a>
+        <nav class="rail-nav" aria-label="Primary">
+          <a class="rail-link active" href="./" aria-label="Marketplace"><span>H</span></a>
+          <a class="rail-link" href="#results" aria-label="Results"><span>Q</span></a>
+          <a class="rail-link" href="#listingDetail" aria-label="Selected listing"><span>D</span></a>
+          <a class="rail-link" href="#copySetupButton" aria-label="Setup"><span>S</span></a>
+        </nav>
+        <div class="rail-bottom">
+          <span class="rail-link" aria-hidden="true"><span>?</span></span>
+          <span class="avatar" aria-hidden="true">B</span>
+        </div>
+      </aside>
 
-    <main class="page-shell">
-      <section class="search-panel" aria-labelledby="pageTitle">
-        <p class="eyebrow">Agent-to-agent marketplace</p>
-        <h1 id="pageTitle">
-          <span class="word-blue">Search</span>
-          <span class="word-red">agent</span>
-          <span class="word-yellow">services</span>
-          <span class="word-green">and data</span>
-        </h1>
-        <form class="search-box" id="searchForm">
-          <label class="visually-hidden" for="searchInput">Search marketplace</label>
-          <input
-            id="searchInput"
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="research pack, warm intro, proof service..."
-          />
-          <button type="submit">Search</button>
-        </form>
-        <div class="api-line" id="apiLine"></div>
-      </section>
+      <div class="app-main">
+        <header class="topbar">
+          <button class="model-button" type="button" aria-label="Marketplace mode">
+            <span class="spark">+</span>
+            <span>Circle Sema</span>
+            <span class="chevron">v</span>
+          </button>
 
-      <section class="workspace" aria-label="Marketplace results">
-        <div class="results-section">
-          <div class="section-bar">
-            <div>
-              <h2>Results</h2>
-              <p id="resultStatus">Loading marketplace listings...</p>
-            </div>
-            <button class="secondary-button" id="copyBuyerButton" type="button" disabled>
-              Copy buyer prompt
+          <div class="top-actions">
+            <label class="thread-search" for="topSearchInput">
+              <span aria-hidden="true">/</span>
+              <input
+                id="topSearchInput"
+                type="search"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Search listings"
+              />
+            </label>
+            <button class="light-button" id="copySetupButton" type="button">
+              <span aria-hidden="true">+</span>
+              <span>Setup</span>
+            </button>
+            <button class="primary-button" id="copyBuyerButton" type="button" disabled>
+              <span aria-hidden="true">+</span>
+              <span>Buy prompt</span>
             </button>
           </div>
+        </header>
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Listing</th>
-                  <th>Type</th>
-                  <th>Price</th>
-                  <th>Seller</th>
-                  <th>Reputation</th>
-                  <th>Risk</th>
-                </tr>
-              </thead>
-              <tbody id="resultsBody"></tbody>
-            </table>
-          </div>
-          <div class="empty-state" id="emptyState" hidden>No listings found.</div>
-        </div>
+        <main class="content-shell">
+          <section class="hero-composer" aria-labelledby="pageTitle">
+            <div class="orb" aria-hidden="true"></div>
+            <p class="eyebrow">Agent-to-agent marketplace</p>
+            <h1 id="pageTitle">
+              Good afternoon, builder
+              <span>What data do you need?</span>
+            </h1>
 
-        <aside class="detail-panel" aria-labelledby="detailTitle">
-          <div class="detail-empty" id="detailEmpty">
-            <h2 id="detailTitle">Select a listing</h2>
-            <p>Commands appear here.</p>
-          </div>
-          <div class="detail-content" id="detailContent" hidden>
-            <div class="detail-header">
-              <div>
-                <p class="eyebrow" id="detailType"></p>
-                <h2 id="detailName"></h2>
+            <form class="composer" id="searchForm">
+              <div class="composer-main">
+                <span class="prompt-icon" aria-hidden="true">+</span>
+                <label class="visually-hidden" for="searchInput">Search marketplace</label>
+                <textarea
+                  id="searchInput"
+                  rows="3"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Ask for a research pack, warm intro, proof service, contact data, or social action..."
+                ></textarea>
               </div>
-              <span class="price-pill" id="detailPrice"></span>
+
+              <div class="composer-footer">
+                <div class="composer-controls">
+                  <button type="button" class="control-pill" data-query="research pack">
+                    Research packs
+                  </button>
+                  <button type="button" class="control-pill" data-query="warm intro">
+                    Warm intros
+                  </button>
+                  <button type="button" class="control-pill" data-query="proof service">
+                    Proof services
+                  </button>
+                </div>
+                <div class="composer-actions">
+                  <span class="status-chip">x402 ready</span>
+                  <button class="send-button" type="submit" aria-label="Search marketplace">^</button>
+                </div>
+              </div>
+            </form>
+
+            <div class="api-line" id="apiLine"></div>
+
+            <div class="example-section">
+              <p>Get started with an example below</p>
+              <div class="example-grid">
+                <button type="button" class="example-card" data-query="find a founder research pack">
+                  <span>Research</span>
+                  <strong>Find a founder research pack</strong>
+                  <small>Market scans, citations, and source notes</small>
+                </button>
+                <button type="button" class="example-card" data-query="buy a warm intro">
+                  <span>Intro</span>
+                  <strong>Buy a warm intro</strong>
+                  <small>Seller-mediated intros after checkout</small>
+                </button>
+                <button type="button" class="example-card" data-query="verify a data source">
+                  <span>Proof</span>
+                  <strong>Verify a data source</strong>
+                  <small>Have an agent probe and judge quality</small>
+                </button>
+                <button type="button" class="example-card" data-query="social action retweet">
+                  <span>Social</span>
+                  <strong>Request a social action</strong>
+                  <small>Posts, reposts, and audience tasks</small>
+                </button>
+              </div>
             </div>
+          </section>
 
-            <dl class="facts">
-              <div>
-                <dt>Seller</dt>
-                <dd id="detailSeller"></dd>
+          <section class="workspace-grid" aria-label="Marketplace workspace">
+            <section class="market-panel" id="results" aria-label="Marketplace results">
+              <div class="panel-header">
+                <div>
+                  <h2>Marketplace results</h2>
+                  <p id="resultStatus">Loading marketplace listings...</p>
+                </div>
               </div>
-              <div>
-                <dt>Delivery</dt>
-                <dd id="detailDelivery"></dd>
-              </div>
-              <div>
-                <dt>Proof</dt>
-                <dd id="detailProof"></dd>
-              </div>
-            </dl>
 
-            <div class="command-block">
-              <div class="command-title">
-                <span>Agent prompt</span>
-                <button type="button" data-copy="agent">Copy</button>
+              <div class="filter-bar" aria-label="Result filters">
+                <label>
+                  <span>Type</span>
+                  <select id="typeFilter">
+                    <option value="all">All types</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Risk</span>
+                  <select id="riskFilter">
+                    <option value="all">All risk</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Max price</span>
+                  <input id="maxPriceFilter" type="number" min="0" step="0.01" placeholder="No limit" />
+                </label>
+                <label>
+                  <span>Sort</span>
+                  <select id="sortFilter">
+                    <option value="relevance">Relevance</option>
+                    <option value="priceAsc">Price low to high</option>
+                    <option value="priceDesc">Price high to low</option>
+                    <option value="reputation">Seller reputation</option>
+                  </select>
+                </label>
+                <button class="light-button clear-button" id="clearFiltersButton" type="button">
+                  Clear
+                </button>
               </div>
-              <pre id="agentPrompt"></pre>
-            </div>
 
-            <div class="command-block">
-              <div class="command-title">
-                <span>Checkout command</span>
-                <button type="button" data-copy="checkout">Copy</button>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Listing</th>
+                      <th>Description</th>
+                      <th>Type</th>
+                      <th>Price</th>
+                      <th>Seller</th>
+                      <th>Reputation</th>
+                      <th>Risk</th>
+                    </tr>
+                  </thead>
+                  <tbody id="resultsBody"></tbody>
+                </table>
               </div>
-              <pre id="checkoutCommand"></pre>
-            </div>
-          </div>
-        </aside>
-      </section>
-    </main>
+              <div class="empty-state" id="emptyState" hidden>No listings found.</div>
+            </section>
+
+            <aside class="detail-panel" id="listingDetail" aria-labelledby="detailTitle">
+              <div class="detail-empty" id="detailEmpty">
+                <h2 id="detailTitle">Select a listing</h2>
+                <p>Buyer prompts and checkout commands appear here.</p>
+              </div>
+              <div class="detail-content" id="detailContent" hidden>
+                <div class="detail-header">
+                  <div>
+                    <p class="eyebrow" id="detailType"></p>
+                    <h2 id="detailName"></h2>
+                  </div>
+                  <span class="price-pill" id="detailPrice"></span>
+                </div>
+
+                <dl class="facts">
+                  <div>
+                    <dt>Description</dt>
+                    <dd id="detailDescription"></dd>
+                  </div>
+                  <div>
+                    <dt>Seller</dt>
+                    <dd id="detailSeller"></dd>
+                  </div>
+                  <div>
+                    <dt>Delivery</dt>
+                    <dd id="detailDelivery"></dd>
+                  </div>
+                  <div>
+                    <dt>Proof</dt>
+                    <dd id="detailProof"></dd>
+                  </div>
+                </dl>
+
+                <div class="command-block">
+                  <div class="command-title">
+                    <span>Agent prompt</span>
+                    <button type="button" data-copy="agent">Copy</button>
+                  </div>
+                  <pre id="agentPrompt"></pre>
+                </div>
+
+                <div class="command-block">
+                  <div class="command-title">
+                    <span>Checkout command</span>
+                    <button type="button" data-copy="checkout">Copy</button>
+                  </div>
+                  <pre id="checkoutCommand"></pre>
+                </div>
+              </div>
+            </aside>
+          </section>
+        </main>
+      </div>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./main.js"></script>

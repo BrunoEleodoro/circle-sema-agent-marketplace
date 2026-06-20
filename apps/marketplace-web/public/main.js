@@ -3,17 +3,39 @@ const SETUP_ONE_LINER =
   'curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marketplace/feature/marketplace-mvp/setup.md Follow that setup guide for the Circle + Sema Marketplace.';
 const SEMA_HANDLES = 'Card#6848, AcceptSpec#b77c, CiteBack#69ec, Probe#12d8, Judge#efe0';
 
+const FALLBACK_TYPES = [
+  'research_pack',
+  'warm_intro',
+  'contact_data',
+  'proof_service',
+  'social_action',
+  'file_delivery',
+];
+
 const state = {
   listings: [],
   reputationBySeller: new Map(),
   selectedId: null,
   query: '',
+  filters: {
+    type: 'all',
+    risk: 'all',
+    maxPrice: '',
+    sort: 'relevance',
+  },
 };
 
 const elements = {
   apiLine: document.querySelector('#apiLine'),
   searchForm: document.querySelector('#searchForm'),
   searchInput: document.querySelector('#searchInput'),
+  topSearchInput: document.querySelector('#topSearchInput'),
+  typeFilter: document.querySelector('#typeFilter'),
+  riskFilter: document.querySelector('#riskFilter'),
+  maxPriceFilter: document.querySelector('#maxPriceFilter'),
+  sortFilter: document.querySelector('#sortFilter'),
+  clearFiltersButton: document.querySelector('#clearFiltersButton'),
+  exampleButtons: document.querySelectorAll('[data-query]'),
   resultsBody: document.querySelector('#resultsBody'),
   resultStatus: document.querySelector('#resultStatus'),
   emptyState: document.querySelector('#emptyState'),
@@ -24,6 +46,7 @@ const elements = {
   detailType: document.querySelector('#detailType'),
   detailName: document.querySelector('#detailName'),
   detailPrice: document.querySelector('#detailPrice'),
+  detailDescription: document.querySelector('#detailDescription'),
   detailSeller: document.querySelector('#detailSeller'),
   detailDelivery: document.querySelector('#detailDelivery'),
   detailProof: document.querySelector('#detailProof'),
@@ -34,6 +57,7 @@ const elements = {
 
 const apiUrl = apiUrlFromLocation();
 let searchTimer = 0;
+let filterTimer = 0;
 let toastTimer = 0;
 
 function apiUrlFromLocation() {
@@ -57,6 +81,10 @@ function formatType(value) {
   return String(value ?? '').replaceAll('_', ' ');
 }
 
+function listingDescription(listing) {
+  return String(listing.description || listing.proofSummary || 'No description provided yet.');
+}
+
 function shortWallet(value) {
   const wallet = String(value ?? '');
   return wallet.length > 12 ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : wallet;
@@ -66,10 +94,14 @@ function selectedListing() {
   return state.listings.find((listing) => listing.id === state.selectedId) ?? null;
 }
 
+function reputationValue(sellerWallet) {
+  const reputation = state.reputationBySeller.get(String(sellerWallet).toLowerCase());
+  return reputation?.reviewCount ? Number(reputation.reputationScore) : 0;
+}
+
 function reputationFor(sellerWallet) {
   const reputation = state.reputationBySeller.get(String(sellerWallet).toLowerCase());
-  if (!reputation) return 'New';
-  if (!reputation.reviewCount) return 'New';
+  if (!reputation?.reviewCount) return 'New';
   return `${Number(reputation.reputationScore).toFixed(1)} / 5 (${reputation.reviewCount})`;
 }
 
@@ -126,7 +158,8 @@ async function fetchReputation(sellerWallet) {
 
 async function loadListings(query = '') {
   state.query = query;
-  const params = new URLSearchParams({ limit: '25' });
+  syncSearchFields(query);
+  const params = new URLSearchParams({ limit: '50' });
   if (query.trim()) params.set('q', query.trim());
   setStatus(query.trim() ? `Searching for "${query.trim()}"...` : 'Loading recent listings...');
   try {
@@ -145,18 +178,81 @@ async function loadListings(query = '') {
   }
 }
 
-function render() {
-  renderRows();
-  renderDetail();
-  const count = state.listings.length;
-  elements.emptyState.hidden = count > 0;
-  setStatus(count === 1 ? '1 listing' : `${count} listings`);
-  elements.copyBuyerButton.disabled = !selectedListing();
+function visibleListings() {
+  const maxPrice = Number(state.filters.maxPrice);
+  const hasMaxPrice = state.filters.maxPrice !== '' && Number.isFinite(maxPrice);
+
+  const listings = state.listings.filter((listing) => {
+    const typeMatches = state.filters.type === 'all' || listing.listingType === state.filters.type;
+    const riskMatches = state.filters.risk === 'all' || listing.riskLevel === state.filters.risk;
+    const priceMatches = !hasMaxPrice || Number(listing.priceUsd) <= maxPrice;
+    return typeMatches && riskMatches && priceMatches;
+  });
+
+  return [...listings].sort((left, right) => {
+    if (state.filters.sort === 'priceAsc') return Number(left.priceUsd) - Number(right.priceUsd);
+    if (state.filters.sort === 'priceDesc') return Number(right.priceUsd) - Number(left.priceUsd);
+    if (state.filters.sort === 'reputation') {
+      return reputationValue(right.sellerWallet) - reputationValue(left.sellerWallet);
+    }
+    return 0;
+  });
 }
 
-function renderRows() {
+function render() {
+  renderFilterOptions();
+  const listings = visibleListings();
+  if (listings.length && !listings.some((listing) => listing.id === state.selectedId)) {
+    state.selectedId = listings[0].id;
+  }
+  if (!listings.length) {
+    state.selectedId = null;
+  }
+
+  renderRows(listings);
+  renderDetail();
+
+  const total = state.listings.length;
+  const visible = listings.length;
+  elements.emptyState.hidden = visible > 0;
+  elements.copyBuyerButton.disabled = !selectedListing();
+
+  if (!total) {
+    setStatus('No listings found.');
+    return;
+  }
+  if (visible === total) {
+    setStatus(total === 1 ? '1 listing' : `${total} listings`);
+    return;
+  }
+  setStatus(`${visible} of ${total} listings match filters`);
+}
+
+function renderFilterOptions() {
+  const typeValues = [...new Set([...FALLBACK_TYPES, ...state.listings.map((listing) => listing.listingType)])]
+    .filter(Boolean)
+    .sort();
+  const currentType = state.filters.type;
+
+  elements.typeFilter.replaceChildren(
+    optionElement('all', 'All types'),
+    ...typeValues.map((type) => optionElement(type, formatType(type))),
+  );
+
+  elements.typeFilter.value = typeValues.includes(currentType) ? currentType : 'all';
+  state.filters.type = elements.typeFilter.value;
+}
+
+function optionElement(value, label) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = label;
+  return option;
+}
+
+function renderRows(listings) {
   elements.resultsBody.replaceChildren(
-    ...state.listings.map((listing) => {
+    ...listings.map((listing) => {
       const row = document.createElement('tr');
       row.tabIndex = 0;
       row.setAttribute('role', 'button');
@@ -171,8 +267,9 @@ function renderRows() {
 
       row.append(
         tableCell(titleCell(listing)),
+        tableCell(descriptionCell(listing)),
         tableCell(formatType(listing.listingType)),
-        tableCell(formatCurrency(listing.priceUsd)),
+        tableCell(formatCurrency(listing.priceUsd), 'price-cell'),
         tableCell(shortWallet(listing.sellerWallet), 'mono'),
         tableCell(reputationFor(listing.sellerWallet)),
         tableCell(riskPill(listing.riskLevel)),
@@ -197,9 +294,16 @@ function titleCell(listing) {
   title.className = 'row-title';
   proof.className = 'row-proof';
   title.textContent = listing.title;
-  proof.textContent = listing.proofSummary;
+  proof.textContent = `Proof: ${listing.proofSummary || 'not declared'}`;
   wrap.append(title, proof);
   return wrap;
+}
+
+function descriptionCell(listing) {
+  const description = document.createElement('span');
+  description.className = 'row-description';
+  description.textContent = listingDescription(listing);
+  return description;
 }
 
 function riskPill(riskLevel) {
@@ -224,6 +328,7 @@ function renderDetail() {
   elements.detailType.textContent = formatType(listing.listingType);
   elements.detailName.textContent = listing.title;
   elements.detailPrice.textContent = formatCurrency(listing.priceUsd);
+  elements.detailDescription.textContent = listingDescription(listing);
   elements.detailSeller.textContent = listing.sellerWallet;
   elements.detailDelivery.textContent = formatType(listing.deliveryMode);
   elements.detailProof.textContent = listing.proofSummary;
@@ -240,6 +345,7 @@ Marketplace API:
 Selected listing:
 - id: ${listing.id}
 - title: ${listing.title}
+- description: ${listingDescription(listing)}
 - seller: ${listing.sellerWallet}
 - price: ${formatCurrency(listing.priceUsd)}
 
@@ -262,6 +368,35 @@ circle services pay "$MARKETPLACE_API_URL/api/deliver/${listing.id}" \\
   --output json`;
 }
 
+function syncSearchFields(value) {
+  if (elements.searchInput.value !== value) elements.searchInput.value = value;
+  if (elements.topSearchInput.value !== value) elements.topSearchInput.value = value;
+}
+
+function scheduleSearch(value) {
+  syncSearchFields(value);
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => loadListings(value), 220);
+}
+
+function updateFilter(key, value) {
+  state.filters[key] = value;
+  render();
+}
+
+function clearFilters() {
+  state.filters = {
+    type: 'all',
+    risk: 'all',
+    maxPrice: '',
+    sort: 'relevance',
+  };
+  elements.riskFilter.value = state.filters.risk;
+  elements.maxPriceFilter.value = state.filters.maxPrice;
+  elements.sortFilter.value = state.filters.sort;
+  render();
+}
+
 function bindEvents() {
   elements.searchForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -269,10 +404,33 @@ function bindEvents() {
     loadListings(elements.searchInput.value);
   });
 
-  elements.searchInput.addEventListener('input', () => {
-    window.clearTimeout(searchTimer);
-    searchTimer = window.setTimeout(() => loadListings(elements.searchInput.value), 220);
+  elements.searchInput.addEventListener('input', () => scheduleSearch(elements.searchInput.value));
+  elements.searchInput.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      window.clearTimeout(searchTimer);
+      loadListings(elements.searchInput.value);
+    }
   });
+
+  elements.topSearchInput.addEventListener('input', () => scheduleSearch(elements.topSearchInput.value));
+
+  elements.exampleButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const query = button.dataset.query ?? '';
+      window.clearTimeout(searchTimer);
+      loadListings(query);
+    });
+  });
+
+  elements.typeFilter.addEventListener('change', () => updateFilter('type', elements.typeFilter.value));
+  elements.riskFilter.addEventListener('change', () => updateFilter('risk', elements.riskFilter.value));
+  elements.sortFilter.addEventListener('change', () => updateFilter('sort', elements.sortFilter.value));
+  elements.maxPriceFilter.addEventListener('input', () => {
+    window.clearTimeout(filterTimer);
+    filterTimer = window.setTimeout(() => updateFilter('maxPrice', elements.maxPriceFilter.value), 120);
+  });
+  elements.clearFiltersButton.addEventListener('click', clearFilters);
 
   elements.copySetupButton.addEventListener('click', () => copyText(SETUP_ONE_LINER));
   elements.copyBuyerButton.addEventListener('click', () => {
