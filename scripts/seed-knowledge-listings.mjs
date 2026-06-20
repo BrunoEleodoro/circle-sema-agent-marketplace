@@ -6,6 +6,7 @@ const sellerWallet = requiredEnv('MARKETPLACE_SELLER_WALLET').toLowerCase();
 const sellerToken = requiredEnv('MARKETPLACE_TOKEN');
 const adminToken = process.env.MARKETPLACE_ADMIN_TOKEN;
 const shouldReset = process.env.RESET_MARKETPLACE === '1';
+const skipExisting = process.env.SKIP_EXISTING === '1';
 
 const semaContext = {
   semaRoot: 'circle-sema-marketplace',
@@ -654,6 +655,51 @@ Normalize everything into a single timeline item shape:
 - Balance refresh does not hide the completed receipt.
 `,
   }),
+  csvPack({
+    id: 'crypto-10y-bitcoin-demo-csv',
+    title: 'Bitcoin 10-year historical CSV demo',
+    description:
+      'Synthetic monthly OHLCV and market-cap CSV for Bitcoin across 10 demo years. Built for hackathon testing, not trading decisions.',
+    filename: 'bitcoin-10y-synthetic-monthly.csv',
+    proofSummary:
+      'Generated deterministic fake monthly BTC rows for marketplace demo delivery and CSV handling tests.',
+    tags: ['finance', 'crypto', 'bitcoin', 'csv', 'synthetic-demo'],
+    symbols: ['BTC'],
+  }),
+  csvPack({
+    id: 'crypto-10y-ethereum-demo-csv',
+    title: 'Ethereum 10-year historical CSV demo',
+    description:
+      'Synthetic monthly OHLCV and market-cap CSV for Ethereum across 10 demo years. Built for hackathon testing, not trading decisions.',
+    filename: 'ethereum-10y-synthetic-monthly.csv',
+    proofSummary:
+      'Generated deterministic fake monthly ETH rows for marketplace demo delivery and CSV handling tests.',
+    tags: ['finance', 'crypto', 'ethereum', 'csv', 'synthetic-demo'],
+    symbols: ['ETH'],
+  }),
+  csvPack({
+    id: 'crypto-10y-solana-demo-csv',
+    title: 'Solana 10-year historical CSV demo',
+    description:
+      'Synthetic monthly OHLCV and market-cap CSV for Solana across 10 demo years. Built for hackathon testing, not trading decisions.',
+    filename: 'solana-10y-synthetic-monthly.csv',
+    proofSummary:
+      'Generated deterministic fake monthly SOL rows for marketplace demo delivery and CSV handling tests.',
+    tags: ['finance', 'crypto', 'solana', 'csv', 'synthetic-demo'],
+    symbols: ['SOL'],
+  }),
+  csvPack({
+    id: 'crypto-10y-btc-eth-sol-demo-bundle',
+    title: 'BTC ETH SOL 10-year historical CSV bundle',
+    description:
+      'Synthetic monthly OHLCV and market-cap CSV bundle for Bitcoin, Ethereum, and Solana across 10 demo years. Built for hackathon testing, not trading decisions.',
+    filename: 'btc-eth-sol-10y-synthetic-monthly-bundle.csv',
+    priceUsd: 3,
+    proofSummary:
+      'Generated deterministic fake monthly BTC, ETH, and SOL rows for marketplace demo delivery and finance-agent tests.',
+    tags: ['finance', 'crypto', 'bitcoin', 'ethereum', 'solana', 'csv', 'bundle', 'synthetic-demo'],
+    symbols: ['BTC', 'ETH', 'SOL'],
+  }),
 ];
 
 if (shouldReset) {
@@ -664,6 +710,7 @@ if (shouldReset) {
 }
 
 const created = [];
+const skipped = [];
 for (const listing of listings) {
   const response = await fetch(`${apiUrl}/api/listings`, {
     method: 'POST',
@@ -676,6 +723,11 @@ for (const listing of listings) {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const errorText = String(body?.error ?? '');
+    if (skipExisting && response.status === 400 && errorText.includes('UNIQUE constraint failed')) {
+      skipped.push({ id: listing.id, reason: 'already exists' });
+      continue;
+    }
     throw new Error(`Failed to seed ${listing.id}: HTTP ${response.status} ${JSON.stringify(body)}`);
   }
   created.push(body.listing);
@@ -686,12 +738,15 @@ console.log(
     {
       apiUrl,
       reset: shouldReset,
+      skipExisting,
       count: created.length,
+      skippedCount: skipped.length,
       listings: created.map((listing) => ({
         id: listing.id,
         title: listing.title,
         priceUsd: listing.priceUsd,
       })),
+      skipped,
     },
     null,
     2,
@@ -736,6 +791,79 @@ function pack(input) {
       instructions: 'Open as Markdown. The pack is sanitized and contains implementation guidance, not secrets or private data.',
     },
   };
+}
+
+function csvPack(input) {
+  const csv = makeSyntheticHistoricalCsv(input.symbols);
+  return {
+    id: input.id,
+    sellerWallet,
+    listingType: 'data_pack',
+    title: input.title,
+    description: input.description,
+    priceUsd: input.priceUsd ?? 1,
+    deliveryMode: 'csv',
+    proofSummary: input.proofSummary,
+    riskLevel: 'low',
+    policyFlags: [
+      'synthetic-demo-data',
+      'not-investment-advice',
+      'csv-deliverable',
+      ...input.tags.map((tag) => `tag:${tag}`),
+    ],
+    semaContext,
+    deliverable: {
+      kind: 'file',
+      filename: input.filename,
+      mimeType: 'text/csv',
+      payload: csv,
+      checksum: `sha256-${sha256(csv)}`,
+      instructions:
+        'Open as CSV. This is synthetic hackathon demo data only, not real market data and not investment advice.',
+    },
+  };
+}
+
+function makeSyntheticHistoricalCsv(symbols) {
+  const configs = {
+    BTC: { start: 430, monthlyGrowth: 0.055, cycle: 0.18, baseVolume: 420_000_000, supply: 19_650_000 },
+    ETH: { start: 1.1, monthlyGrowth: 0.075, cycle: 0.22, baseVolume: 95_000_000, supply: 120_000_000 },
+    SOL: { start: 0.08, monthlyGrowth: 0.095, cycle: 0.28, baseVolume: 18_000_000, supply: 440_000_000 },
+  };
+  const lines = ['date,symbol,open,high,low,close,volume_usd,market_cap_usd,source_note'];
+  for (const symbol of symbols) {
+    const config = configs[symbol];
+    for (let index = 0; index < 120; index += 1) {
+      const year = 2016 + Math.floor(index / 12);
+      const month = (index % 12) + 1;
+      const trend = config.start * (1 + config.monthlyGrowth) ** index;
+      const wave = 1 + Math.sin(index / 4.2) * config.cycle + Math.cos(index / 9.5) * (config.cycle / 2);
+      const open = trend * wave;
+      const close = open * (1 + Math.sin(index / 2.7) * 0.07);
+      const high = Math.max(open, close) * (1.04 + (index % 5) * 0.004);
+      const low = Math.min(open, close) * (0.96 - (index % 4) * 0.003);
+      const volume = config.baseVolume * (1 + index / 24) * (1 + Math.abs(Math.sin(index / 3)) * 0.6);
+      const marketCap = close * config.supply;
+      lines.push(
+        [
+          `${year}-${String(month).padStart(2, '0')}-01`,
+          symbol,
+          formatNumber(open),
+          formatNumber(high),
+          formatNumber(low),
+          formatNumber(close),
+          Math.round(volume),
+          Math.round(marketCap),
+          'synthetic_demo_not_real_market_data',
+        ].join(','),
+      );
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function formatNumber(value) {
+  return Number(value).toFixed(value >= 100 ? 2 : 4);
 }
 
 function sha256(value) {

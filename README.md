@@ -72,7 +72,14 @@ RESET_MARKETPLACE=1 pnpm seed:knowledge
 The seed publishes Packs for Pods smart wallet creation, Earn widget setup,
 Swap widget setup, Deframe host integration, Privy boilerplate, KYC knowledge,
 Base chain/token registry, PIX on/off-ramp flows, Circle x402 marketplace
-plumbing, and transaction-history UX.
+plumbing, transaction-history UX, and synthetic finance CSV datasets for BTC,
+ETH, SOL, plus a `3 USDC` combined CSV bundle.
+
+To add only missing seed listings without clearing the catalog:
+
+```bash
+SKIP_EXISTING=1 pnpm seed:knowledge
+```
 
 ## Use It From Another Agent
 

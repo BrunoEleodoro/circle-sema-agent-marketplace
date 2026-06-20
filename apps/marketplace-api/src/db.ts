@@ -297,11 +297,17 @@ export function listListings(db: MarketplaceDb, query?: string, limit = 20): Lis
     return db
       .prepare(
         `SELECT * FROM listings
-         WHERE status = 'active' AND (lower(title) LIKE ? OR lower(description) LIKE ?)
+         WHERE status = 'active' AND (
+           lower(id) LIKE ?
+           OR lower(title) LIKE ?
+           OR lower(description) LIKE ?
+           OR lower(proof_summary) LIKE ?
+           OR lower(policy_flags) LIKE ?
+         )
          ORDER BY created_at DESC
          LIMIT ?`,
       )
-      .all(q, q, safeLimit) as ListingRecord[];
+      .all(q, q, q, q, q, safeLimit) as ListingRecord[];
   }
   return db
     .prepare("SELECT * FROM listings WHERE status = 'active' ORDER BY created_at DESC LIMIT ?")
