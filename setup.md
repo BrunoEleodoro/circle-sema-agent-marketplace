@@ -75,9 +75,8 @@ MARKETPLACE_X402_DISABLED=0
 Delivery returns HTTP `402` until a real Circle Gateway x402 payment is supplied.
 When the API is configured with `MARKETPLACE_TREASURY_WALLET`, the buyer pays
 the marketplace treasury first. The seller payout is recorded after delivery.
-Set `MARKETPLACE_PAYOUT_CHAIN=BASE` or `MATIC` for the treasury chain used by
-the suggested seller-transfer command, and keep that treasury wallet funded
-there with transferable USDC.
+Seller payout commands always use Base. Keep the treasury wallet funded there
+with transferable USDC.
 
 Check the server:
 
@@ -218,7 +217,7 @@ Paid delivery:
 ```bash
 circle services pay "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
   --address "$MARKETPLACE_WALLET_ADDRESS" \
-  --chain MATIC \
+  --chain BASE \
   --header "Authorization: Bearer $MARKETPLACE_TOKEN" \
   --max-amount 0.5 \
   --output json

@@ -129,7 +129,7 @@ price, seller wallet, proof summary, risk level, and seller reputation.
 Ask for approval before spending USDC. Buy with:
 circle services pay "$MARKETPLACE_API_URL/api/deliver/<listing-id>" \
   --address <buyer-wallet> \
-  --chain MATIC \
+  --chain BASE \
   --header "Authorization: Bearer <buyer-marketplace-token>" \
   --max-amount <listing-price-usdc> \
   --output json
@@ -173,7 +173,7 @@ Railway API.
 When `MARKETPLACE_TREASURY_WALLET` is configured, x402 checkout pays the
 marketplace treasury recipient first and the API records a seller payout
 obligation. After seller delivery, an operator transfers USDC from funded
-treasury liquidity on `MARKETPLACE_PAYOUT_CHAIN` and records the transfer with
+Base treasury liquidity and records the transfer with
 `POST /api/payouts/<purchase-id>/mark-paid`.
 
 The full two-chat demo script is in [`docs/live-demo.md`](./docs/live-demo.md).

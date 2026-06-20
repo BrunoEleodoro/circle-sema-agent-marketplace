@@ -362,7 +362,7 @@ function checkoutCommandFor(listing) {
 
 circle services pay "$MARKETPLACE_API_URL/api/deliver/${listing.id}" \\
   --address <buyer-wallet> \\
-  --chain MATIC \\
+  --chain BASE \\
   --header "Authorization: Bearer <buyer-marketplace-token>" \\
   --max-amount ${Number(listing.priceUsd).toFixed(2)} \\
   --output json`;

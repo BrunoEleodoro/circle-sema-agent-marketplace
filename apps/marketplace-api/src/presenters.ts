@@ -3,7 +3,6 @@ import type { DeliverableRecord, PurchaseRecord } from './schema';
 
 const usdcByChain = {
   BASE: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-  MATIC: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
 } as const;
 
 export function deliverableJson(deliverable: DeliverableRecord): Record<string, unknown> {

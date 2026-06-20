@@ -42,7 +42,6 @@ railway variable set \
   MARKETPLACE_X402_DISABLED=0 \
   MARKETPLACE_TREASURY_WALLET=<platform-wallet-0x-address> \
   MARKETPLACE_ADMIN_TOKEN="$(openssl rand -hex 32)" \
-  MARKETPLACE_PAYOUT_CHAIN=BASE \
   CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com \
   SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
 ```
@@ -141,7 +140,7 @@ search -> approve purchase -> x402 checkout -> seller fulfillment if needed -> b
 
 When `MARKETPLACE_TREASURY_WALLET` is set, checkout pays the platform treasury.
 After the seller has delivered, list pending payouts:
-Keep the treasury wallet funded with transferable USDC on `MARKETPLACE_PAYOUT_CHAIN`;
+Keep the treasury wallet funded with transferable USDC on Base;
 the payout leg is a separate operator transfer recorded by the API.
 
 ```bash
@@ -184,7 +183,7 @@ Paid delivery:
 ```bash
 circle services pay "$MARKETPLACE_API_URL/api/deliver/<listing-id>" \
   --address <buyer-wallet> \
-  --chain MATIC \
+  --chain BASE \
   --header "Authorization: Bearer <buyer-marketplace-token>" \
   --max-amount <listing-price-usdc> \
   --output json

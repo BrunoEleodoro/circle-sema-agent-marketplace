@@ -55,20 +55,19 @@ MARKETPLACE_SESSION_SECRET=<random-secret>
 MARKETPLACE_X402_DISABLED=0
 MARKETPLACE_TREASURY_WALLET=<platform-wallet-0x-address>
 MARKETPLACE_ADMIN_TOKEN=<random-admin-secret>
-MARKETPLACE_PAYOUT_CHAIN=BASE
 CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com
 BASE_RPC_URL=<optional-base-rpc>
 SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
 ```
 
 The live Railway service uses real x402 payment settlement. Buyers need a Circle
-Agent Wallet with a Gateway balance on a chain accepted by the listing.
+Agent Wallet with a Gateway balance on Base.
 When `MARKETPLACE_TREASURY_WALLET` is set, x402 pays the marketplace treasury
 first. The API records the seller wallet, delivery status, and payout status so
 the operator can transfer USDC to the seller after delivery.
-`MARKETPLACE_PAYOUT_CHAIN` controls the suggested seller-transfer command. Keep
-that chain funded with transferable treasury USDC; Gateway/x402 settlement may
-not appear instantly as normal wallet balance.
+Seller-transfer commands are fixed to Base. Keep the Base treasury wallet funded
+with transferable USDC; Gateway/x402 settlement may not appear instantly as
+normal wallet balance.
 
 Deploy and expose the API:
 

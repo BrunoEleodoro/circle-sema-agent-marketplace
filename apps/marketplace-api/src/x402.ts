@@ -16,6 +16,8 @@ interface PaidRequest extends Request {
   };
 }
 
+const BASE_GATEWAY_NETWORK = 'eip155:8453';
+
 function priceString(priceUsd: number): string {
   return `$${priceUsd.toFixed(2)}`;
 }
@@ -114,6 +116,7 @@ function productionGatewayFor(listing: NonNullable<ReturnType<typeof getListing>
   const facilitatorUrl = process.env.CIRCLE_GATEWAY_FACILITATOR_URL ?? 'https://gateway-api.circle.com';
   return createGatewayMiddleware({
     sellerAddress: paymentRecipientFor(listing),
+    networks: BASE_GATEWAY_NETWORK,
     facilitatorUrl,
   });
 }
