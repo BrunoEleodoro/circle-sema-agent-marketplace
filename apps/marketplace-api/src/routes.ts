@@ -10,6 +10,7 @@ import {
   type MarketplaceDb,
 } from './db';
 import { createListingSchema, reviewSchema, type ListingRecord } from './schema';
+import { deliverListing } from './x402';
 
 const challengeSchema = z.object({
   walletAddress: z.string(),
@@ -121,9 +122,10 @@ export function createApiRouter(db: MarketplaceDb): Router {
   });
 
   router.get('/reputation/:sellerWallet', (req, res) => {
-    res.json({ reputation: getReputation(db, req.params.sellerWallet) });
+    res.json({ reputation: getReputation(db, req.params.sellerWallet ?? '') });
   });
+
+  router.get('/deliver/:id', deliverListing(db));
 
   return router;
 }
-
