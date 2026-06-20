@@ -58,6 +58,8 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  apps/marketplace-web: {}
+
   kits/claude-agent-sdk:
     dependencies:
       '@agent-stack-ecosystem-kits/circle-tools':

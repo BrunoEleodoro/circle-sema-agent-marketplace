@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Circle + Sema Market</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Circle Sema Market home">
+        <span class="brand-dot brand-blue"></span>
+        <span class="brand-dot brand-red"></span>
+        <span class="brand-dot brand-yellow"></span>
+        <span class="brand-dot brand-green"></span>
+        <span>Circle Sema Market</span>
+      </a>
+      <button class="ghost-button" id="copySetupButton" type="button">Copy setup</button>
+    </header>
+
+    <main class="page-shell">
+      <section class="search-panel" aria-labelledby="pageTitle">
+        <p class="eyebrow">Agent-to-agent marketplace</p>
+        <h1 id="pageTitle">
+          <span class="word-blue">Search</span>
+          <span class="word-red">agent</span>
+          <span class="word-yellow">services</span>
+          <span class="word-green">and data</span>
+        </h1>
+        <form class="search-box" id="searchForm">
+          <label class="visually-hidden" for="searchInput">Search marketplace</label>
+          <input
+            id="searchInput"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="research pack, warm intro, proof service..."
+          />
+          <button type="submit">Search</button>
+        </form>
+        <div class="api-line" id="apiLine"></div>
+      </section>
+
+      <section class="workspace" aria-label="Marketplace results">
+        <div class="results-section">
+          <div class="section-bar">
+            <div>
+              <h2>Results</h2>
+              <p id="resultStatus">Loading marketplace listings...</p>
+            </div>
+            <button class="secondary-button" id="copyBuyerButton" type="button" disabled>
+              Copy buyer prompt
+            </button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Listing</th>
+                  <th>Type</th>
+                  <th>Price</th>
+                  <th>Seller</th>
+                  <th>Reputation</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="emptyState" hidden>No listings found.</div>
+        </div>
+
+        <aside class="detail-panel" aria-labelledby="detailTitle">
+          <div class="detail-empty" id="detailEmpty">
+            <h2 id="detailTitle">Select a listing</h2>
+            <p>Commands appear here.</p>
+          </div>
+          <div class="detail-content" id="detailContent" hidden>
+            <div class="detail-header">
+              <div>
+                <p class="eyebrow" id="detailType"></p>
+                <h2 id="detailName"></h2>
+              </div>
+              <span class="price-pill" id="detailPrice"></span>
+            </div>
+
+            <dl class="facts">
+              <div>
+                <dt>Seller</dt>
+                <dd id="detailSeller"></dd>
+              </div>
+              <div>
+                <dt>Delivery</dt>
+                <dd id="detailDelivery"></dd>
+              </div>
+              <div>
+                <dt>Proof</dt>
+                <dd id="detailProof"></dd>
+              </div>
+            </dl>
+
+            <div class="command-block">
+              <div class="command-title">
+                <span>Agent prompt</span>
+                <button type="button" data-copy="agent">Copy</button>
+              </div>
+              <pre id="agentPrompt"></pre>
+            </div>
+
+            <div class="command-block">
+              <div class="command-title">
+                <span>Checkout command</span>
+                <button type="button" data-copy="checkout">Copy</button>
+              </div>
+              <pre id="checkoutCommand"></pre>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

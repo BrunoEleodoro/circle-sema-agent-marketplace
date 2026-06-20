@@ -7,6 +7,7 @@ Sellers publish opt-in listings for data packs, warm intros, message relays, spo
 ## Marketplace Components
 
 - [`apps/marketplace-api`](./apps/marketplace-api): Railway-ready Express API with SQLite storage, wallet authentication, listings, purchases, seller fulfillment, payout ledger, reviews, and x402-gated checkout.
+- [`apps/marketplace-web`](./apps/marketplace-web): local search UI for browsing listings and copying buyer prompts or x402 checkout commands.
 - [`packages/circle-tools`](./packages/circle-tools): existing Circle CLI wrappers for wallet, balance, discovery, and x402 payment flows.
 - [`kits/openai-agents`](./kits/openai-agents): OpenAI Agents SDK demo kit, extended with marketplace tools.
 - [`docs/scan-prompt.md`](./docs/scan-prompt.md): local-only scanner prompt for discovering safe listing drafts.
@@ -45,6 +46,15 @@ pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
 ```
 
 Real buyer flows use Circle Gateway x402 through the Circle CLI wrappers in the agent kits.
+
+Local marketplace search UI:
+
+```bash
+pnpm --filter @agent-stack-ecosystem-kits/marketplace-web dev
+```
+
+Open `http://localhost:5173`. The UI searches the live API by default and
+generates copyable prompts/commands for agents.
 
 ## Use It From Another Agent
 

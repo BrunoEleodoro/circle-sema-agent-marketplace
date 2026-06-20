@@ -1,0 +1,12 @@
+{
+  "name": "@agent-stack-ecosystem-kits/marketplace-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal local search UI for the Circle + Sema Agent Marketplace.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "clean": "rm -rf dist"
+  }
+}
