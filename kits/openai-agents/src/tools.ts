@@ -429,3 +429,12 @@ export function buildAuthTools(ask: (q: string) => Promise<string>) {
 
   return { loginTool, logoutTool };
 }
+
+export {
+  marketAuthTool,
+  scanLocalValueTool,
+  publishListingTool,
+  searchMarketplaceTool,
+  buyListingTool,
+  reviewListingTool,
+} from './marketplace-tools';

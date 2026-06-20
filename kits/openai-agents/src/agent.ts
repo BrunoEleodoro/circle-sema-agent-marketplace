@@ -14,6 +14,12 @@ import {
   circleInspectService,
   circlePayService,
   circleGatewayDeposit,
+  marketAuthTool,
+  scanLocalValueTool,
+  publishListingTool,
+  searchMarketplaceTool,
+  buyListingTool,
+  reviewListingTool,
   buildAuthTools,
 } from './tools';
 
@@ -42,6 +48,12 @@ export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string
       circleInspectService,
       circlePayService,
       circleGatewayDeposit,
+      marketAuthTool,
+      scanLocalValueTool,
+      publishListingTool,
+      searchMarketplaceTool,
+      buyListingTool,
+      reviewListingTool,
     ],
   });
 }
