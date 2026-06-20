@@ -7,7 +7,6 @@ import {
   isAddress,
   verifyMessage,
   type Hex,
-  type PublicClient,
 } from 'viem';
 import { base } from 'viem/chains';
 import { nowMs, sessionSecret } from './config';
@@ -29,6 +28,15 @@ const eip1271Abi = [
     outputs: [{ name: 'magicValue', type: 'bytes4' }],
   },
 ] as const;
+
+interface Eip1271Client {
+  readContract(args: {
+    address: Hex;
+    abi: typeof eip1271Abi;
+    functionName: 'isValidSignature';
+    args: [Hex, Hex];
+  }): Promise<unknown>;
+}
 
 export interface AuthChallenge {
   id: string;
@@ -89,18 +97,18 @@ export function createAuthChallenge(db: MarketplaceDb, walletAddress: string, ch
   return { id, walletAddress: wallet, chain, nonce, message, expiresAt };
 }
 
-export function createBaseClient(): PublicClient {
+export function createBaseClient(): Eip1271Client {
   return createPublicClient({
     chain: base,
     transport: http(process.env.BASE_RPC_URL),
-  });
+  }) as Eip1271Client;
 }
 
 export async function verifyWalletSignature(
   walletAddress: string,
   message: string,
   signature: string,
-  publicClient = createBaseClient(),
+  publicClient: Eip1271Client = createBaseClient(),
 ): Promise<boolean> {
   const wallet = normalizeWallet(walletAddress);
   const hexSignature = signature as Hex;
@@ -189,4 +197,3 @@ export function requireAuth(db: MarketplaceDb) {
     next();
   };
 }
-

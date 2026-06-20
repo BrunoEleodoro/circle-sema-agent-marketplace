@@ -18,7 +18,9 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@circle-fin/x402-batching": "^0.2.1",
+    "@circle-fin/x402-batching": "^3.2.0",
+    "@x402/core": "^2.15.0",
+    "@x402/evm": "^2.15.0",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
@@ -33,4 +35,3 @@
     "typescript": "^5.5.0"
   }
 }
-

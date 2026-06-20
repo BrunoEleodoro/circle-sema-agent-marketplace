@@ -52,7 +52,8 @@ export const reviewSchema = z.object({
   text: z.string().min(3).max(2000),
 });
 
-export type CreateListingInput = z.infer<typeof createListingSchema>;
+export type CreateListingInput = z.input<typeof createListingSchema>;
+export type ParsedListingInput = z.output<typeof createListingSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
 export type ListingType = (typeof listingTypes)[number];
 
@@ -85,4 +86,3 @@ export interface PurchaseRecord {
   payment_receipt: string;
   created_at: number;
 }
-

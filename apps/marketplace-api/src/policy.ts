@@ -1,4 +1,4 @@
-import type { CreateListingInput } from './schema';
+import type { ParsedListingInput } from './schema';
 
 const BANNED_POLICY_FLAGS = new Set([
   'raw-contact-sales',
@@ -24,7 +24,7 @@ const SENSITIVE_TERMS = [
   'bot engagement',
 ];
 
-export function validateListingPolicy(input: CreateListingInput): string[] {
+export function validateListingPolicy(input: ParsedListingInput): string[] {
   const errors: string[] = [];
   for (const flag of input.policyFlags) {
     if (BANNED_POLICY_FLAGS.has(flag)) {
@@ -50,10 +50,9 @@ export function validateListingPolicy(input: CreateListingInput): string[] {
   return errors;
 }
 
-export function assertListingPolicy(input: CreateListingInput): void {
+export function assertListingPolicy(input: ParsedListingInput): void {
   const errors = validateListingPolicy(input);
   if (errors.length > 0) {
     throw new Error(errors.join(' '));
   }
 }
-

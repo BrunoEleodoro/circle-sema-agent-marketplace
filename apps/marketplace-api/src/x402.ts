@@ -4,9 +4,10 @@ import { getDeliverable, getListing, recordPurchase, type MarketplaceDb } from '
 
 interface PaidRequest extends Request {
   payment?: {
-    payer?: string;
-    amount?: string;
-    network?: string;
+    verified: boolean;
+    payer: string;
+    amount: string;
+    network: string;
     transaction?: string;
     receipt?: string;
   };
@@ -83,7 +84,9 @@ function productionGatewayFor(listing: NonNullable<ReturnType<typeof getListing>
 
 export function deliverListing(db: MarketplaceDb) {
   return (req: PaidRequest, res: Response, _next: NextFunction): void => {
-    const listing = getListing(db, req.params.id ?? '');
+    const idParam = req.params.id;
+    const listingId = Array.isArray(idParam) ? idParam[0] : idParam;
+    const listing = getListing(db, listingId ?? '');
     if (!listing) {
       res.status(404).json({ error: 'Listing not found.' });
       return;
