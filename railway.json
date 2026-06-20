@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @agent-stack-ecosystem-kits/marketplace-api build",
+    "watchPatterns": [
+      "apps/marketplace-api/**",
+      "packages/**",
+      "kits/openai-agents/**",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "railway.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "corepack enable && pnpm --filter @agent-stack-ecosystem-kits/marketplace-api start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 60,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
