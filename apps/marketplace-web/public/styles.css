@@ -38,6 +38,10 @@ body {
   color: var(--text);
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 button,
 input,
 select,
@@ -99,7 +103,10 @@ button {
   height: 38px;
   display: grid;
   place-items: center;
+  border: 0;
+  padding: 0;
   border-radius: 12px;
+  background: transparent;
   color: #667085;
   text-decoration: none;
   position: relative;
@@ -425,13 +432,12 @@ h1 span {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(330px, 390px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 18px;
 }
 
-.market-panel,
-.detail-panel {
+.market-panel {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -658,21 +664,66 @@ tbody tr:last-child td {
   text-align: center;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(8px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
 .detail-panel {
-  position: sticky;
-  top: 20px;
-  overflow: hidden;
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(88vh, 920px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.24);
+  outline: 0;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 820;
+}
+
+.modal-close:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-soft);
 }
 
 .detail-empty,
 .detail-content {
-  padding: 20px;
+  padding: 28px;
 }
 
 .detail-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  padding-right: 42px;
 }
 
 .detail-header h2 {
@@ -809,14 +860,6 @@ pre {
     width: min(100% - 32px, 1180px);
     padding-top: 56px;
   }
-
-  .workspace-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .detail-panel {
-    position: static;
-  }
 }
 
 @media (max-width: 860px) {
@@ -899,10 +942,24 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .modal-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .detail-panel {
+    width: 100%;
+    max-height: 86vh;
+  }
+
   .panel-header,
   .detail-empty,
   .detail-content {
     padding: 16px;
+  }
+
+  .detail-header {
+    padding-right: 38px;
   }
 
   th,

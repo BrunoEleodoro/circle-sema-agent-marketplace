@@ -16,6 +16,7 @@ const state = {
   listings: [],
   reputationBySeller: new Map(),
   selectedId: null,
+  detailOpen: false,
   query: '',
   filters: {
     type: 'all',
@@ -41,6 +42,10 @@ const elements = {
   emptyState: document.querySelector('#emptyState'),
   copySetupButton: document.querySelector('#copySetupButton'),
   copyBuyerButton: document.querySelector('#copyBuyerButton'),
+  openDetailButton: document.querySelector('#openDetailButton'),
+  detailModal: document.querySelector('#detailModal'),
+  listingDetail: document.querySelector('#listingDetail'),
+  detailCloseButton: document.querySelector('#detailCloseButton'),
   detailEmpty: document.querySelector('#detailEmpty'),
   detailContent: document.querySelector('#detailContent'),
   detailType: document.querySelector('#detailType'),
@@ -256,6 +261,8 @@ function renderRows(listings) {
       const row = document.createElement('tr');
       row.tabIndex = 0;
       row.setAttribute('role', 'button');
+      row.setAttribute('aria-controls', 'listingDetail');
+      row.setAttribute('aria-haspopup', 'dialog');
       row.setAttribute('aria-selected', String(listing.id === state.selectedId));
       row.addEventListener('click', () => selectListing(listing.id));
       row.addEventListener('keydown', (event) => {
@@ -316,14 +323,44 @@ function riskPill(riskLevel) {
 
 function selectListing(id) {
   state.selectedId = id;
+  state.detailOpen = true;
   render();
+  window.requestAnimationFrame(focusDetailModal);
+}
+
+function openSelectedDetail() {
+  if (!selectedListing()) {
+    showToast('Select a listing first');
+    return;
+  }
+  state.detailOpen = true;
+  render();
+  window.requestAnimationFrame(focusDetailModal);
+}
+
+function closeDetail() {
+  state.detailOpen = false;
+  render();
+}
+
+function focusDetailModal() {
+  elements.listingDetail.scrollTop = 0;
+  elements.agentPrompt.scrollTop = 0;
+  elements.checkoutCommand.scrollTop = 0;
+  elements.listingDetail.focus();
 }
 
 function renderDetail() {
   const listing = selectedListing();
+  const isOpen = Boolean(listing && state.detailOpen);
+  elements.detailModal.hidden = !isOpen;
+  document.body.classList.toggle('modal-open', isOpen);
   elements.detailEmpty.hidden = Boolean(listing);
   elements.detailContent.hidden = !listing;
-  if (!listing) return;
+  if (!listing) {
+    state.detailOpen = false;
+    return;
+  }
 
   elements.detailType.textContent = formatType(listing.listingType);
   elements.detailName.textContent = listing.title;
@@ -437,6 +474,11 @@ function bindEvents() {
     const listing = selectedListing();
     if (listing) copyText(agentPromptFor(listing));
   });
+  elements.openDetailButton.addEventListener('click', openSelectedDetail);
+  elements.detailCloseButton.addEventListener('click', closeDetail);
+  elements.detailModal.addEventListener('click', (event) => {
+    if (event.target === elements.detailModal) closeDetail();
+  });
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
@@ -445,6 +487,9 @@ function bindEvents() {
     const kind = button.dataset.copy;
     if (kind === 'agent') copyText(elements.agentPrompt.textContent);
     if (kind === 'checkout') copyText(elements.checkoutCommand.textContent);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.detailOpen) closeDetail();
   });
 }
 
