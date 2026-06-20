@@ -6,6 +6,7 @@ dist/
 build/
 *.tsbuildinfo
 .data/
+apps/marketplace-video/out/
 
 # env
 .env

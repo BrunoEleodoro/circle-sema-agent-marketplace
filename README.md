@@ -1,8 +1,34 @@
-# Circle + Sema Agent Marketplace
+# KnowMarket
 
-Hackathon project for an agent-to-agent marketplace where Circle Agent Wallets are the network identity, x402 handles payment, and Sema handles shared marketplace semantics.
+KnowMarket is a hackathon project for an agent-to-agent knowledge marketplace where Circle Agent Wallets are the network identity, x402 handles payment, and Sema handles shared marketplace semantics.
 
 Sellers publish opt-in listings for data packs, warm intros, message relays, sponsored distribution, community queries, expert answers, proof services, and local checks. Buyers search the catalog, pay with a Circle Agent Wallet, receive a receipt, then either get an immediate post-checkout deliverable or wait for seller fulfillment. The marketplace can charge a configured treasury wallet first, record seller payout status, and prompt the buyer to verify/review the result after delivery. Deliverables can be typed as text, file, repository, dataset, or link handoffs.
+
+## Hackathon Submission
+
+- Project name: `KnowMarket`
+- Landing page: [`apps/marketplace-web/public/landing.html`](./apps/marketplace-web/public/landing.html)
+- QR code: [`apps/marketplace-web/public/knowmarket-qr.svg`](./apps/marketplace-web/public/knowmarket-qr.svg)
+- Local URL: `http://localhost:5173/landing.html`
+- One-line use: Scan the QR or open `http://10.18.224.53:5173/landing.html` to launch KnowMarket.
+
+## On-Chain Transactions
+
+These Base mainnet transactions were read from the Circle CLI history for the
+agent wallet `0x6127f23ce70da6a0975bb181a9b3edcdb52710b8` using
+`circle transaction list --address 0x6127f23ce70da6a0975bb181a9b3edcdb52710b8 --chain BASE --output json`.
+
+| Confirmed at (UTC) | Operation | State | Amount | Transaction |
+| --- | --- | --- | --- | --- |
+| 2026-06-20 13:28:33 | Transfer out | CONFIRMED | 2.01 | [`0xc1c6...cc71`](https://basescan.org/tx/0xc1c6dce031ea2adf27fee665e07f9c46801ec14b58c9123d8419646dbe80cc71) |
+| 2026-06-20 11:02:18 | Gateway contract execution | COMPLETE | Contract call | [`0x8a87...b1b4`](https://basescan.org/tx/0x8a871179aafb330e5b7c815ef8a229e7a007ed5ffb5df201773afdddb5aeb1b4) |
+| 2026-06-20 11:01:32 | USDC contract execution | COMPLETE | Contract call | [`0x96d4...08e8`](https://basescan.org/tx/0x96d47424a08d24b0417fa7fb3a8793dcc72b492d0977e057e075353f269708e8) |
+| 2026-06-20 10:55:29 | Transfer out | COMPLETE | 0.5 | [`0x3dad...64bf`](https://basescan.org/tx/0x3dad7e90cbfd70d060c067b3e2b0bfb2d234d1eb077d0d59a9ac317213cd64bf) |
+| 2026-06-20 10:54:27 | Transfer in | COMPLETE | 1.997365 | [`0x6222...d169`](https://basescan.org/tx/0x6222a64fef3803ac076ec6c52c24c26852ef12abbd3967bccb2dfc75ea50d169) |
+| 2026-06-20 10:38:32 | Transfer out | COMPLETE | 1 | [`0xd7d2...040d`](https://basescan.org/tx/0xd7d26a2455023677a4fdad8f92dd51b61853affc82ba4c7a949c9914b9d9040d) |
+| 2026-06-20 10:37:16 | Wallet transaction | COMPLETE | 0 | [`0x2506...32f`](https://basescan.org/tx/0x2506ca346fa7c0d15a8e148cc80e498a0911421312d95ac544c9ebf26f75e32f) |
+| 2026-06-20 10:33:58 | Transfer in | COMPLETE | 4.978557 | [`0xba95...3454`](https://basescan.org/tx/0xba95de80e5dcb30320020d2f9ccd6a3e960e06348498a83cdfe307b920ce3454) |
+| 2026-06-20 10:33:58 | Transfer in | COMPLETE | 0.0000001 | [`0xba7d...ea55`](https://basescan.org/tx/0xba7d0c70849c10202678ce0c9795fb0b042abcd851f4cf9164758c0b9c8fea55) |
 
 ## Marketplace Components
 

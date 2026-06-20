@@ -1,0 +1,27 @@
+{
+  "name": "@agent-stack-ecosystem-kits/marketplace-video",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Remotion showcase video for the Circle + Sema Agent Marketplace hackathon project.",
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts CircleSemaMarketplace out/circle-sema-marketplace.mp4 --codec=h264 --pixel-format=yuv420p --concurrency=1 --scale=0.666666 --crf=28",
+    "still": "remotion still src/index.ts CircleSemaMarketplace out/poster.png --frame=120",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf out dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remotion": "^4.0.481",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.481",
+    "@types/node": "^20.14.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.5.0"
+  }
+}

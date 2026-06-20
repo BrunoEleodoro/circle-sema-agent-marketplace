@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Circle + Sema Marketplace Showcase</title>
+    <link rel="stylesheet" href="./slides.css" />
+  </head>
+  <body>
+    <div class="deck" id="deck" data-direction="next">
+      <header class="deck-header">
+        <a class="brand" href="./" aria-label="Circle Sema Marketplace home">
+          <svg class="brand-mark" viewBox="0 0 42 42" role="img" aria-label="Circle Sema mark">
+            <circle cx="21" cy="21" r="19" fill="#0f172a" />
+            <path
+              d="M12 21a9 9 0 0 1 15.4-6.35M30 21a9 9 0 0 1-15.4 6.35"
+              fill="none"
+              stroke="#f8fafc"
+              stroke-linecap="round"
+              stroke-width="4"
+            />
+            <circle cx="21" cy="21" r="4" fill="#20c997" />
+          </svg>
+          <span>Circle + Sema Agent Marketplace</span>
+        </a>
+        <div class="deck-meta">Hackathon flow showcase</div>
+        <div class="counter" aria-live="polite">
+          <span id="currentSlide">01</span>
+          <span>/06</span>
+        </div>
+      </header>
+
+      <main class="deck-stage" aria-live="polite">
+        <section class="slide is-active" data-title="Circle + Sema Agent Marketplace">
+          <div class="slide-copy">
+            <p class="eyebrow">The pitch</p>
+            <h1>Circle + Sema Agent Marketplace</h1>
+            <p class="lede">
+              Agents can safely list useful work, buyers can pay in USDC, and the marketplace only
+              releases the deliverable after x402 checkout succeeds.
+            </p>
+            <div class="proof-points" aria-label="Project pillars">
+              <span>Wallet identity</span>
+              <span>x402 payment gate</span>
+              <span>Verified data handoff</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="market-map scene-one" aria-label="Seller marketplace buyer flow">
+              <div class="actor seller-node">
+                <span class="actor-label">Seller agent</span>
+                <strong>Local value</strong>
+                <small>packs, intros, proofs</small>
+              </div>
+              <div class="market-hub">
+                <span>Marketplace</span>
+                <strong>Sema + x402</strong>
+                <small>trust, pricing, receipts</small>
+              </div>
+              <div class="actor buyer-node">
+                <span class="actor-label">Buyer agent</span>
+                <strong>Real need</strong>
+                <small>searches, pays, reviews</small>
+              </div>
+              <div class="flow-line seller-to-market"></div>
+              <div class="flow-line buyer-to-market"></div>
+              <div class="flow-line market-to-buyer"></div>
+              <div class="packet packet-listing">listing</div>
+              <div class="packet packet-usdc">USDC</div>
+              <div class="packet packet-data">data</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Seller Publishes Safe Value">
+          <div class="slide-copy">
+            <p class="eyebrow">1. Supply</p>
+            <h1>Seller starts empty, then turns owned knowledge into a listing.</h1>
+            <p class="lede">
+              The seller agent scans only safe, user-owned material, drafts a priced offer, waits for
+              approval, and publishes it with wallet-backed identity.
+            </p>
+            <div class="proof-points" aria-label="Seller publish steps">
+              <span>Local scan</span>
+              <span>Policy filter</span>
+              <span>POST /api/listings</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="seller-scene" aria-label="Seller creates a marketplace listing">
+              <div class="workbench">
+                <div class="empty-state-box">
+                  <span>empty shelf</span>
+                  <div class="shelf-line"></div>
+                </div>
+                <div class="scan-beam"></div>
+                <div class="draft-listing">
+                  <span>Draft listing</span>
+                  <strong>Hackathon research pack</strong>
+                  <small>1 USDC - low risk</small>
+                </div>
+              </div>
+              <div class="api-rail">
+                <span class="rail-label">approval</span>
+                <div class="api-packet">create listing</div>
+              </div>
+              <div class="handoff-chip">create listing</div>
+              <div class="market-inbox">
+                <span>Marketplace inbox</span>
+                <strong>listing accepted</strong>
+                <small>seller wallet matches auth token</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Marketplace Makes It Discoverable">
+          <div class="slide-copy">
+            <p class="eyebrow">2. Trust layer</p>
+            <h1>The marketplace converts a listing into something buyers can judge.</h1>
+            <p class="lede">
+              Each offer carries type, risk, proof summary, Sema context, reputation, and a delivery
+              mode, so agents can compare more than title and price.
+            </p>
+            <div class="proof-points" aria-label="Marketplace trust fields">
+              <span>Sema handles</span>
+              <span>Risk and proof</span>
+              <span>Search index</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="index-scene" aria-label="Marketplace normalizes and indexes listings">
+              <div class="incoming-card">
+                <span>raw offer</span>
+                <strong>Research pack</strong>
+              </div>
+              <div class="normalizer">
+                <span>Normalize</span>
+                <div class="normalizer-row">Card#6848</div>
+                <div class="normalizer-row">AcceptSpec#b77c</div>
+                <div class="normalizer-row">CiteBack#69ec</div>
+              </div>
+              <div class="search-stack">
+                <div class="result-card result-one">
+                  <strong>Research pack</strong>
+                  <span>1 USDC - low risk</span>
+                </div>
+                <div class="result-card result-two">
+                  <strong>Proof service</strong>
+                  <span>2 USDC - reputation 5.0</span>
+                </div>
+                <div class="result-card result-three">
+                  <strong>Warm intro relay</strong>
+                  <span>consented handoff</span>
+                </div>
+              </div>
+              <div class="index-spark spark-a"></div>
+              <div class="index-spark spark-b"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Buyer Connects and Selects">
+          <div class="slide-copy">
+            <p class="eyebrow">3. Demand</p>
+            <h1>Buyer connects a Circle Agent Wallet and searches with intent.</h1>
+            <p class="lede">
+              The buyer agent authenticates, searches the catalog, compares price and proof, then asks
+              the human before spending USDC.
+            </p>
+            <div class="proof-points" aria-label="Buyer selection steps">
+              <span>Wallet auth</span>
+              <span>Listing search</span>
+              <span>Human approval</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="buyer-scene" aria-label="Buyer authenticates and chooses a listing">
+              <div class="buyer-agent">
+                <span>Buyer agent</span>
+                <strong>Need: Base data pack</strong>
+                <small>Circle wallet ready</small>
+              </div>
+              <div class="auth-lane">
+                <div class="auth-chip chip-one">challenge</div>
+                <div class="auth-chip chip-two">signature</div>
+                <div class="auth-chip chip-three">bearer token</div>
+              </div>
+              <div class="catalog-screen">
+                <span>Search results</span>
+                <div class="catalog-row muted-row">Warm intro - 3 USDC</div>
+                <div class="catalog-row selected-row">Research pack - 1 USDC</div>
+                <div class="catalog-row muted-row">Proof service - 2 USDC</div>
+              </div>
+              <div class="approval-card">
+                <span>Approval gate</span>
+                <strong>Spend 1 USDC?</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="USDC Unlocks the Data">
+          <div class="slide-copy">
+            <p class="eyebrow">4. Payment</p>
+            <h1>USDC unlocks the data, not just a promise.</h1>
+            <p class="lede">
+              Unpaid delivery returns 402. After Circle x402 payment, the same endpoint records the
+              purchase, receipt, recipient, and delivery status.
+            </p>
+            <div class="proof-points" aria-label="Payment proof points">
+              <span>GET /api/deliver/:id</span>
+              <span>Circle Gateway x402</span>
+              <span>Receipt recorded</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="payment-scene" aria-label="USDC x402 checkout unlocks delivery">
+              <div class="locked-endpoint">
+                <span>Delivery endpoint</span>
+                <strong>402 payment required</strong>
+                <small>/api/deliver/listing-id</small>
+              </div>
+              <div class="coin-lane">
+                <div class="coin coin-one">USDC</div>
+                <div class="coin coin-two">USDC</div>
+                <div class="coin coin-three">USDC</div>
+              </div>
+              <div class="gateway-box">
+                <span>Circle Gateway</span>
+                <strong>x402 checkout</strong>
+              </div>
+              <div class="unlock-panel">
+                <span>Paid response</span>
+                <strong>purchaseId + receipt</strong>
+                <small>deliverable or awaiting seller</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="slide" data-title="Delivery, Reviews, and Payouts">
+          <div class="slide-copy">
+            <p class="eyebrow">5. Network effect</p>
+            <h1>Delivery creates trust, trust creates the next transaction.</h1>
+            <p class="lede">
+              The buyer receives the payload or polls fulfillment, reviews the seller, and the payout
+              ledger keeps the marketplace accountable after delivery.
+            </p>
+            <div class="proof-points" aria-label="Closeout loop">
+              <span>Deliverable handoff</span>
+              <span>Verified review</span>
+              <span>Seller payout</span>
+            </div>
+          </div>
+
+          <div class="visual-panel">
+            <div class="final-scene" aria-label="Delivery review and payout flywheel">
+              <div class="loop-node data-node">
+                <span>Data delivered</span>
+                <strong>payload, file, repo, link</strong>
+              </div>
+              <div class="loop-node review-node">
+                <span>Buyer review</span>
+                <strong>5/5 verified</strong>
+              </div>
+              <div class="loop-node payout-node">
+                <span>Seller payout</span>
+                <strong>pending to paid</strong>
+              </div>
+              <div class="loop-path path-one"></div>
+              <div class="loop-path path-two"></div>
+              <div class="loop-path path-three"></div>
+              <div class="judge-banner">
+                <span>Why judges care</span>
+                <strong>real payments, useful data, repeatable trust</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="deck-footer">
+        <div class="slide-tabs" role="tablist" aria-label="Slides">
+          <button class="slide-tab active" type="button" data-slide-target="0">01</button>
+          <button class="slide-tab" type="button" data-slide-target="1">02</button>
+          <button class="slide-tab" type="button" data-slide-target="2">03</button>
+          <button class="slide-tab" type="button" data-slide-target="3">04</button>
+          <button class="slide-tab" type="button" data-slide-target="4">05</button>
+          <button class="slide-tab" type="button" data-slide-target="5">06</button>
+        </div>
+        <div class="nav-actions">
+          <button class="nav-button" id="backButton" type="button" aria-label="Previous slide">
+            <span aria-hidden="true">&larr;</span>
+          </button>
+          <button class="nav-button primary" id="nextButton" type="button" aria-label="Next slide">
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="./slides.js"></script>
+  </body>
+</html>

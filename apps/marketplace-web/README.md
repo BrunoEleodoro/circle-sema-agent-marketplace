@@ -1,6 +1,6 @@
-# Marketplace Web
+# KnowMarket Web
 
-Minimal local browser UI for the Circle + Sema Agent Marketplace.
+Minimal local browser UI and landing page for KnowMarket.
 
 ```bash
 pnpm --filter @agent-stack-ecosystem-kits/marketplace-web dev
@@ -10,6 +10,18 @@ Open:
 
 ```text
 http://localhost:5173
+```
+
+Hackathon animated showcase:
+
+```text
+http://localhost:5173/slides.html
+```
+
+Hackathon landing page and QR target:
+
+```text
+http://localhost:5173/landing.html
 ```
 
 The UI defaults to the live Railway API:
