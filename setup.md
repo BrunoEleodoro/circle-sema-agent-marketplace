@@ -80,6 +80,9 @@ with transferable USDC.
 
 Check the server:
 
+For deployed APIs, set a strong `MARKETPLACE_SESSION_SECRET` and restrict
+`MARKETPLACE_CORS_ORIGIN` to trusted web origins instead of `*`.
+
 ```bash
 curl -i http://localhost:3000/health
 ```

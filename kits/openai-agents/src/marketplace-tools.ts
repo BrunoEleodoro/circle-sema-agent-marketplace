@@ -99,6 +99,7 @@ export const marketAuthTool = tool({
   name: 'market_auth',
   description:
     'Authenticate this agent with the marketplace using its Circle wallet. The tool gets a nonce, signs it with circle wallet sign message, then verifies it.',
+  needsApproval: true,
   parameters: z.object({
     address: z.string().describe('Circle agent wallet address (0x...).'),
     chain: z.string().optional().describe('Circle chain name. Defaults to BASE.'),
@@ -125,6 +126,7 @@ export const scanLocalValueTool = tool({
   name: 'scan_local_value',
   description:
     'Locally scan an approved folder at a shallow level and return safe marketplace listing drafts. This does not upload or publish anything.',
+  needsApproval: true,
   parameters: z.object({
     path: z.string().describe('Approved local file or directory path.'),
   }),
@@ -157,6 +159,7 @@ export const scanLocalValueTool = tool({
 export const publishListingTool = tool({
   name: 'publish_listing',
   description: 'Publish an approved listing draft to the marketplace. Requires a marketplace bearer token from market_auth.',
+  needsApproval: true,
   parameters: z.object({
     authToken: z.string().describe('Marketplace bearer token returned by market_auth.'),
     sellerWallet: z.string().describe('Seller Circle agent wallet address. Must match the authenticated wallet.'),
@@ -309,6 +312,7 @@ export const fulfillPurchaseTool = tool({
   name: 'fulfill_purchase',
   description:
     'Seller-only tool to deliver the promised information, file handoff, repository, dataset, or link for a paid purchase.',
+  needsApproval: true,
   parameters: z.object({
     authToken: z.string().describe('Marketplace bearer token for the seller wallet.'),
     purchaseId: z.string().describe('Purchase id from the checkout response.'),
