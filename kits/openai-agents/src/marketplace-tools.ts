@@ -92,6 +92,7 @@ const listingTypeEnum = z.enum([
 ]);
 
 const deliveryModeEnum = z.enum(['markdown', 'json', 'csv', 'zip', 'intro_service', 'relay', 'text']);
+const deliverableKindEnum = z.enum(['text', 'file', 'repository', 'dataset', 'link']);
 const riskEnum = z.enum(['low', 'medium', 'high']);
 
 export const marketAuthTool = tool({
@@ -167,8 +168,14 @@ export const publishListingTool = tool({
     proofSummary: z.string(),
     riskLevel: riskEnum.optional(),
     policyFlagsCsv: z.string().optional().describe('Comma-separated policy flags, e.g. disclosure-required.'),
+    deliverableKind: deliverableKindEnum.optional().describe('Post-checkout deliverable kind. Defaults to text.'),
     deliverablePayload: z.string().optional().describe('Optional demo deliverable payload to store behind x402.'),
     mimeType: z.string().optional().describe('Deliverable MIME type. Defaults to text/plain.'),
+    filename: z.string().optional().describe('Filename when the deliverable is a file or dataset.'),
+    uri: z.string().optional().describe('Post-checkout URI for a file, dataset, or link deliverable.'),
+    repositoryUrl: z.string().optional().describe('Post-checkout repository URL for repository deliverables.'),
+    instructions: z.string().optional().describe('Post-checkout access or usage instructions.'),
+    checksum: z.string().optional().describe('Optional checksum for file or dataset deliverables.'),
   }),
   execute: async ({
     authToken,
@@ -181,14 +188,29 @@ export const publishListingTool = tool({
     proofSummary,
     riskLevel,
     policyFlagsCsv,
+    deliverableKind,
     deliverablePayload,
     mimeType,
+    filename,
+    uri,
+    repositoryUrl,
+    instructions,
+    checksum,
   }) => {
     const policyFlags = policyFlagsCsv
       ? policyFlagsCsv.split(',').map((item) => item.trim()).filter(Boolean)
       : [];
     const deliverable = deliverablePayload
-      ? { payload: deliverablePayload, mimeType: mimeType ?? 'text/plain' }
+      ? {
+          kind: deliverableKind ?? 'text',
+          payload: deliverablePayload,
+          mimeType: mimeType ?? 'text/plain',
+          filename,
+          uri,
+          repositoryUrl,
+          instructions,
+          checksum,
+        }
       : undefined;
     const result = await apiRequest(
       'publish_listing',

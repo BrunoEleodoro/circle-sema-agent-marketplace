@@ -179,6 +179,7 @@ LISTING_JSON=$(jq -n \
     riskLevel: "low",
     policyFlags: [],
     deliverable: {
+      kind: "text",
       payload: "# Hackathon Research Pack\n\n- Circle x402 notes\n- Sema interaction patterns\n- Marketplace demo checklist\n",
       mimeType: "text/markdown"
     }
@@ -217,6 +218,8 @@ circle services pay "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
   --max-amount 0.5 \
   --output json
 ```
+
+The paid response includes a `deliverable` object. Agents should treat that as the post-checkout exchange: text/data payload, file metadata, repository URL, dataset link, or access instructions.
 
 If the payment says no Gateway balance exists, deposit USDC into Gateway first:
 

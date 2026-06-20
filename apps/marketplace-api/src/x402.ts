@@ -64,6 +64,17 @@ function deliverPaidContent(
     purchaseId: purchase.id,
     contentHash: deliverable.content_hash,
     mimeType: deliverable.mime_type,
+    deliverable: {
+      kind: deliverable.kind,
+      mimeType: deliverable.mime_type,
+      contentHash: deliverable.content_hash,
+      payload: deliverable.payload,
+      filename: deliverable.filename,
+      uri: deliverable.uri,
+      repositoryUrl: deliverable.repository_url,
+      instructions: deliverable.instructions,
+      checksum: deliverable.checksum,
+    },
     payload: deliverable.payload,
     receipt: {
       buyerWallet,

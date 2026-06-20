@@ -6,6 +6,7 @@ import {
   createListingSchema,
   reviewSchema,
   type CreateListingInput,
+  type DeliverableRecord,
   type ListingRecord,
   type PurchaseRecord,
   type ReviewInput,
@@ -73,9 +74,15 @@ export function migrate(db: MarketplaceDb): void {
     CREATE TABLE IF NOT EXISTS deliverables (
       id TEXT PRIMARY KEY,
       listing_id TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL DEFAULT 'text',
       payload TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       content_hash TEXT NOT NULL,
+      filename TEXT,
+      uri TEXT,
+      repository_url TEXT,
+      instructions TEXT,
+      checksum TEXT,
       encrypted INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE
@@ -117,6 +124,18 @@ export function migrate(db: MarketplaceDb): void {
     CREATE INDEX IF NOT EXISTS idx_purchases_buyer ON purchases(buyer_wallet);
     CREATE INDEX IF NOT EXISTS idx_reviews_seller ON reviews(seller_wallet);
   `);
+  addColumnIfMissing(db, 'deliverables', 'kind', "kind TEXT NOT NULL DEFAULT 'text'");
+  addColumnIfMissing(db, 'deliverables', 'filename', 'filename TEXT');
+  addColumnIfMissing(db, 'deliverables', 'uri', 'uri TEXT');
+  addColumnIfMissing(db, 'deliverables', 'repository_url', 'repository_url TEXT');
+  addColumnIfMissing(db, 'deliverables', 'instructions', 'instructions TEXT');
+  addColumnIfMissing(db, 'deliverables', 'checksum', 'checksum TEXT');
+}
+
+function addColumnIfMissing(db: MarketplaceDb, table: string, column: string, definition: string): void {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (rows.some((row) => row.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
 }
 
 export function upsertAgent(
@@ -174,14 +193,23 @@ export function createListing(db: MarketplaceDb, input: CreateListingInput): Lis
 
   if (parsed.deliverable) {
     db.prepare(`
-      INSERT INTO deliverables (id, listing_id, payload, mime_type, content_hash, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO deliverables (
+        id, listing_id, kind, payload, mime_type, content_hash, filename, uri,
+        repository_url, instructions, checksum, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       randomUUID(),
       id,
+      parsed.deliverable.kind,
       parsed.deliverable.payload,
       parsed.deliverable.mimeType,
       sha256(parsed.deliverable.payload),
+      parsed.deliverable.filename ?? null,
+      parsed.deliverable.uri ?? null,
+      parsed.deliverable.repositoryUrl ?? null,
+      parsed.deliverable.instructions ?? null,
+      parsed.deliverable.checksum ?? null,
       t,
     );
   }
@@ -213,11 +241,15 @@ export function listListings(db: MarketplaceDb, query?: string, limit = 20): Lis
     .all(safeLimit) as ListingRecord[];
 }
 
-export function getDeliverable(db: MarketplaceDb, listingId: string): { payload: string; mime_type: string; content_hash: string } | null {
+export function getDeliverable(db: MarketplaceDb, listingId: string): DeliverableRecord | null {
   return (
-    db.prepare('SELECT payload, mime_type, content_hash FROM deliverables WHERE listing_id = ?').get(listingId) as
-      | { payload: string; mime_type: string; content_hash: string }
-      | undefined
+    db
+      .prepare(
+        `SELECT payload, mime_type, content_hash, kind, filename, uri, repository_url, instructions, checksum
+         FROM deliverables
+         WHERE listing_id = ?`,
+      )
+      .get(listingId) as DeliverableRecord | undefined
   ) ?? null;
 }
 
@@ -335,4 +367,3 @@ export function getReputation(
     reviewCount: row?.review_count ?? 0,
   };
 }
-

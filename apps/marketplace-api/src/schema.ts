@@ -15,6 +15,7 @@ export const listingTypes = [
 export const riskLevels = ['low', 'medium', 'high'] as const;
 
 export const deliveryModes = ['markdown', 'json', 'csv', 'zip', 'intro_service', 'relay', 'text'] as const;
+export const deliverableKinds = ['text', 'file', 'repository', 'dataset', 'link'] as const;
 
 export const semaContextSchema = z
   .object({
@@ -39,8 +40,30 @@ export const createListingSchema = z.object({
   expiresAt: z.number().int().positive().optional(),
   deliverable: z
     .object({
+      kind: z.enum(deliverableKinds).default('text'),
       payload: z.string().min(1).max(200_000),
       mimeType: z.string().min(3).max(120).default('text/plain'),
+      filename: z.string().min(1).max(180).optional(),
+      uri: z.string().url().optional(),
+      repositoryUrl: z.string().url().optional(),
+      instructions: z.string().min(1).max(2000).optional(),
+      checksum: z.string().min(8).max(160).optional(),
+    })
+    .superRefine((deliverable, ctx) => {
+      if (deliverable.kind === 'file' && !deliverable.filename && !deliverable.uri) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'file deliverables require filename or uri.',
+          path: ['filename'],
+        });
+      }
+      if (deliverable.kind === 'repository' && !deliverable.repositoryUrl && !deliverable.uri) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'repository deliverables require repositoryUrl or uri.',
+          path: ['repositoryUrl'],
+        });
+      }
     })
     .optional(),
 });
@@ -56,6 +79,7 @@ export type CreateListingInput = z.input<typeof createListingSchema>;
 export type ParsedListingInput = z.output<typeof createListingSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
 export type ListingType = (typeof listingTypes)[number];
+export type DeliverableKind = (typeof deliverableKinds)[number];
 
 export interface ListingRecord {
   id: string;
@@ -85,4 +109,16 @@ export interface PurchaseRecord {
   transaction_hash: string | null;
   payment_receipt: string;
   created_at: number;
+}
+
+export interface DeliverableRecord {
+  payload: string;
+  mime_type: string;
+  content_hash: string;
+  kind: DeliverableKind;
+  filename: string | null;
+  uri: string | null;
+  repository_url: string | null;
+  instructions: string | null;
+  checksum: string | null;
 }

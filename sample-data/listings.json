@@ -110,6 +110,13 @@
         "Contradictions or uncertainty notes",
         "Source list"
       ],
+      "post_checkout_deliverable": {
+        "kind": "file",
+        "filename": "research-pack.md",
+        "mimeType": "text/markdown",
+        "payload_summary": "Markdown research pack with cited claims and source IDs.",
+        "checksum": "sha256:<computed-after-packaging>"
+      },
       "accept_spec": {
         "ref": "AcceptSpec#b77c",
         "strictness": "Strict",
@@ -238,6 +245,11 @@
         "Mutual-value summary",
         "Disclosure checklist"
       ],
+      "post_checkout_deliverable": {
+        "kind": "text",
+        "mimeType": "text/markdown",
+        "payload_summary": "Markdown intro workflow with rationale, draft, and disclosure checklist."
+      },
       "accept_spec": {
         "ref": "AcceptSpec#b77c",
         "strictness": "Strict",

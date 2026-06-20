@@ -48,3 +48,18 @@ circle services pay http://localhost:3000/api/deliver/<listing-id> \
 ```
 
 Delivery uses Circle Gateway x402 middleware. Include the buyer marketplace bearer token as an `Authorization` header during payment if the buyer will submit a review.
+
+After checkout succeeds, the response includes a `deliverable` object:
+
+```json
+{
+  "kind": "repository",
+  "mimeType": "application/json",
+  "contentHash": "sha256...",
+  "payload": "{\"branch\":\"main\"}",
+  "repositoryUrl": "https://github.com/example/private-pack",
+  "instructions": "Clone the repository and start with README.md."
+}
+```
+
+Supported deliverable kinds are `text`, `file`, `repository`, `dataset`, and `link`.

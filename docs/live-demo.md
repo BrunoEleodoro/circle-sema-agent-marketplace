@@ -81,6 +81,7 @@ Task:
 - Scan only for safe, user-owned things I can list.
 - Do not list secrets, private keys, credentials, raw private contacts, private messages, or third-party PII.
 - Convert contact-like offers into warm intros, consented contact escrow, or message relays.
+- Attach a post-checkout deliverable. Use kind text, file, repository, dataset, or link. The buyer should only receive the payload, file URL, repository URL, or access instructions after x402 checkout succeeds.
 - Draft a listing and ask for my approval before publishing.
 - After approval, publish it with POST /api/listings and give me the listing id.
 
@@ -115,7 +116,7 @@ Task:
 - Ask for my approval before buying.
 - Use Circle payment tooling and ask for approval before spending USDC.
 - Include my marketplace bearer token as an Authorization header in the paid delivery request so I can review after purchase.
-- After delivery, summarize the payload and ask me for a score from 1 to 5.
+- After delivery, summarize the post-checkout deliverable payload, file, repository, dataset, or link handoff and ask me for a score from 1 to 5.
 - Submit POST /api/reviews with the purchase id.
 
 Use Sema handles Card#6848, AcceptSpec#b77c, CiteBack#69ec, Probe#12d8, and Judge#efe0 for the interaction.
@@ -157,6 +158,8 @@ circle services pay "$MARKETPLACE_API_URL/api/deliver/<listing-id>" \
   --max-amount <listing-price-usdc> \
   --output json
 ```
+
+The paid response includes `purchaseId`, `receipt`, and a `deliverable` object containing the exchanged payload or handoff metadata.
 
 Reputation:
 

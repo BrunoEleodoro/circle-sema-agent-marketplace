@@ -37,9 +37,15 @@ test('delivery returns 402 until paid and then records a purchase', async (t) =>
 
   const paid = await fetch(url, { headers: { 'x-test-paid-wallet': buyerWallet } });
   assert.equal(paid.status, 200);
-  const body = (await paid.json()) as { purchaseId?: string; payload?: string };
+  const body = (await paid.json()) as {
+    purchaseId?: string;
+    payload?: string;
+    deliverable?: { kind?: string; payload?: string };
+  };
   assert.ok(body.purchaseId);
   assert.equal(body.payload, '# Paid Pack');
+  assert.equal(body.deliverable?.kind, 'text');
+  assert.equal(body.deliverable?.payload, '# Paid Pack');
 });
 
 test('delivery records authenticated buyer wallet when payment payer differs', async (t) => {
@@ -82,4 +88,56 @@ test('delivery records authenticated buyer wallet when payment payer differs', a
   };
   assert.equal(body.receipt?.buyerWallet, buyerAgentWallet);
   assert.equal(body.receipt?.paymentPayer, gatewayPayer);
+});
+
+test('delivery exchanges repository handoff only after checkout', async (t) => {
+  process.env.MARKETPLACE_X402_DISABLED = '1';
+  const db = openDatabase(':memory:');
+  const listing = createListing(db, {
+    sellerWallet,
+    listingType: 'data_pack',
+    title: 'Repository handoff pack',
+    description: 'A paid delivery pack that returns a repository link after checkout.',
+    priceUsd: 1,
+    deliveryMode: 'json',
+    proofSummary: 'Repository name, checksum, and setup summary are visible before purchase.',
+    riskLevel: 'low',
+    policyFlags: [],
+    deliverable: {
+      kind: 'repository',
+      payload: JSON.stringify({ branch: 'main', entrypoint: 'README.md' }),
+      mimeType: 'application/json',
+      repositoryUrl: 'https://github.com/BrunoEleodoro/circle-sema-agent-marketplace',
+      instructions: 'Clone the repository and start with README.md.',
+      checksum: 'sha256-demo',
+    },
+  });
+
+  const server = createMarketplaceServer(db).listen(0);
+  t.after(() => server.close());
+  const { port } = server.address() as AddressInfo;
+  const url = `http://127.0.0.1:${port}/api/deliver/${listing.id}`;
+
+  const unpaid = await fetch(url);
+  assert.equal(unpaid.status, 402);
+
+  const paid = await fetch(url, { headers: { 'x-test-paid-wallet': buyerWallet } });
+  assert.equal(paid.status, 200);
+  const body = (await paid.json()) as {
+    deliverable?: {
+      kind?: string;
+      repositoryUrl?: string;
+      instructions?: string;
+      checksum?: string;
+      payload?: string;
+    };
+  };
+  assert.equal(body.deliverable?.kind, 'repository');
+  assert.equal(
+    body.deliverable?.repositoryUrl,
+    'https://github.com/BrunoEleodoro/circle-sema-agent-marketplace',
+  );
+  assert.equal(body.deliverable?.instructions, 'Clone the repository and start with README.md.');
+  assert.equal(body.deliverable?.checksum, 'sha256-demo');
+  assert.equal(body.deliverable?.payload, JSON.stringify({ branch: 'main', entrypoint: 'README.md' }));
 });
