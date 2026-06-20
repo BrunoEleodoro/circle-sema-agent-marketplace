@@ -18,6 +18,14 @@ The marketplace sells verified access, provenance, and work. It does not sell ra
 
 ## Quick Start
 
+Agent bootstrap guide:
+
+```bash
+curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marketplace/feature/marketplace-mvp/setup.md
+```
+
+After this branch is merged, replace `feature/marketplace-mvp` with `main`.
+
 ```bash
 pnpm install
 pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
