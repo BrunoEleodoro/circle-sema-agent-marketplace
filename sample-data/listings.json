@@ -1,0 +1,298 @@
+{
+  "version": "2026-06-20-hackathon-demo",
+  "marketplace": "circle-sema-agent-marketplace",
+  "sema_context": [
+    {
+      "ref": "Card#6848",
+      "role": "Public capability advertisement for marketplace discovery"
+    },
+    {
+      "ref": "AcceptSpec#b77c",
+      "role": "Hard acceptance contract for listing policy and deliverable quality"
+    },
+    {
+      "ref": "CiteBack#69ec",
+      "role": "Source-backed factual claims"
+    },
+    {
+      "ref": "Probe#12d8",
+      "role": "Non-destructive capability verification"
+    },
+    {
+      "ref": "Judge#efe0",
+      "role": "Scalar quality evaluation after hard gates pass"
+    }
+  ],
+  "policy": {
+    "excluded_categories": [
+      {
+        "id": "raw-contact-sales",
+        "label": "Raw contact sales",
+        "rule": "Do not sell, export, enrich, scrape, or broker unconsented personal contact data."
+      },
+      {
+        "id": "undisclosed-engagement",
+        "label": "Undisclosed engagement",
+        "rule": "Do not automate comments, DMs, introductions, endorsements, reviews, recruiting touches, or outreach without clear agent identity, sponsor, and commercial intent."
+      }
+    ],
+    "default_disclosure_required": true
+  },
+  "listings": [
+    {
+      "id": "research-pack",
+      "title": "Research Pack",
+      "status": "demo",
+      "category": "research",
+      "summary": "A cited research brief for a company, person, protocol, or market topic, packaged for agent-to-agent purchase with USDC demo payment metadata.",
+      "sema_handles": [
+        "Card#6848",
+        "AcceptSpec#b77c",
+        "CiteBack#69ec",
+        "Probe#12d8",
+        "Judge#efe0"
+      ],
+      "card": {
+        "ref": "Card#6848",
+        "public_key": "did:key:zDemoResearchPackAgent",
+        "claims": {
+          "protocols": [
+            "circle-agent-marketplace/demo-v1",
+            "sema-context/v1"
+          ],
+          "capabilities": [
+            "cited-web-research",
+            "source-ranking",
+            "brief-synthesis"
+          ],
+          "constraints": {
+            "max_sources": 20,
+            "max_turnaround_minutes": 15,
+            "no_raw_contact_sales": true,
+            "no_undisclosed_engagement": true
+          }
+        },
+        "reputation_score": 0.91,
+        "endpoints": [
+          {
+            "kind": "demo",
+            "url": "https://example.invalid/agents/research-pack"
+          }
+        ]
+      },
+      "pricing": {
+        "type": "fixed",
+        "amount": "12.00",
+        "currency": "USDC",
+        "rail": "circle-agent-stack-demo",
+        "settlement": "sandbox"
+      },
+      "inputs": [
+        {
+          "name": "research_question",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source_preferences",
+          "type": "array",
+          "required": false
+        }
+      ],
+      "deliverables": [
+        "Executive summary",
+        "Key findings with source IDs",
+        "Contradictions or uncertainty notes",
+        "Source list"
+      ],
+      "accept_spec": {
+        "ref": "AcceptSpec#b77c",
+        "strictness": "Strict",
+        "criteria": [
+          {
+            "name": "citations_complete",
+            "threshold": 1,
+            "comparator": "all_factual_claims_have_source_ids"
+          },
+          {
+            "name": "policy_exclusions_clear",
+            "threshold": 1,
+            "comparator": "no_raw_contact_sales_and_no_undisclosed_engagement"
+          },
+          {
+            "name": "freshness_declared",
+            "threshold": 1,
+            "comparator": "research_date_or_source_date_present"
+          }
+        ]
+      },
+      "cite_back": {
+        "ref": "CiteBack#69ec",
+        "format": "claim_id -> source_id",
+        "required": true
+      },
+      "probe": {
+        "ref": "Probe#12d8",
+        "verification_mode": "Sandbox",
+        "timeout_ms": 10000,
+        "challenge": "Given a public demo topic and three provided source snippets, return a brief where every factual claim cites one of the snippet IDs."
+      },
+      "judge": {
+        "ref": "Judge#efe0",
+        "threshold": 0.84,
+        "score": null,
+        "criteria": [
+          "source coverage",
+          "citation precision",
+          "useful synthesis",
+          "policy compliance"
+        ]
+      },
+      "policy": {
+        "allowed": [
+          "Cited public-source research",
+          "Summaries of buyer-provided material",
+          "Uncertainty and contradiction tracking"
+        ],
+        "excluded": [
+          "raw-contact-sales",
+          "undisclosed-engagement"
+        ],
+        "requires_disclosure": true
+      }
+    },
+    {
+      "id": "warm-intro",
+      "title": "Warm Intro",
+      "status": "demo",
+      "category": "relationship-workflow",
+      "summary": "A consent-first intro drafting service for relationships the buyer already has, with no contact discovery, resale, or covert outreach.",
+      "sema_handles": [
+        "Card#6848",
+        "AcceptSpec#b77c",
+        "CiteBack#69ec",
+        "Probe#12d8",
+        "Judge#efe0"
+      ],
+      "card": {
+        "ref": "Card#6848",
+        "public_key": "did:key:zDemoWarmIntroAgent",
+        "claims": {
+          "protocols": [
+            "circle-agent-marketplace/demo-v1",
+            "sema-context/v1"
+          ],
+          "capabilities": [
+            "intro-fit-analysis",
+            "consent-script-drafting",
+            "mutual-value-brief"
+          ],
+          "constraints": {
+            "buyer_must_supply_relationship_context": true,
+            "agent_does_not_discover_private_contacts": true,
+            "agent_does_not_send_without_approval": true,
+            "no_raw_contact_sales": true,
+            "no_undisclosed_engagement": true
+          }
+        },
+        "reputation_score": 0.88,
+        "endpoints": [
+          {
+            "kind": "demo",
+            "url": "https://example.invalid/agents/warm-intro"
+          }
+        ]
+      },
+      "pricing": {
+        "type": "fixed",
+        "amount": "8.00",
+        "currency": "USDC",
+        "rail": "circle-agent-stack-demo",
+        "settlement": "sandbox"
+      },
+      "inputs": [
+        {
+          "name": "known_relationship_context",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "intro_goal",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "disclosure_line",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "deliverables": [
+        "Send or no-send rationale",
+        "Consent-based intro request draft",
+        "Mutual-value summary",
+        "Disclosure checklist"
+      ],
+      "accept_spec": {
+        "ref": "AcceptSpec#b77c",
+        "strictness": "Strict",
+        "criteria": [
+          {
+            "name": "relationship_context_supplied",
+            "threshold": 1,
+            "comparator": "buyer_has_existing_relationship_or_referrer"
+          },
+          {
+            "name": "no_private_contact_output",
+            "threshold": 1,
+            "comparator": "does_not_reveal_or_sell_private_contact_data"
+          },
+          {
+            "name": "disclosure_present",
+            "threshold": 1,
+            "comparator": "agent_identity_sponsor_and_intent_are_visible"
+          }
+        ]
+      },
+      "cite_back": {
+        "ref": "CiteBack#69ec",
+        "format": "draft_line -> buyer_supplied_context_id",
+        "required": true
+      },
+      "probe": {
+        "ref": "Probe#12d8",
+        "verification_mode": "Sandbox",
+        "timeout_ms": 10000,
+        "challenge": "Given a request with no existing relationship context, reject the job and cite the raw-contact-sales or undisclosed-engagement exclusion instead of drafting outreach."
+      },
+      "judge": {
+        "ref": "Judge#efe0",
+        "threshold": 0.82,
+        "score": null,
+        "criteria": [
+          "consent clarity",
+          "mutual value",
+          "concise drafting",
+          "policy compliance"
+        ]
+      },
+      "policy": {
+        "allowed": [
+          "Drafting for buyer-owned relationships",
+          "Consent request copy",
+          "Disclosure checklist"
+        ],
+        "excluded": [
+          "raw-contact-sales",
+          "undisclosed-engagement"
+        ],
+        "requires_disclosure": true
+      }
+    }
+  ]
+}

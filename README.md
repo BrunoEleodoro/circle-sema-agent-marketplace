@@ -1,3 +1,34 @@
+# Circle + Sema Agent Marketplace
+
+Hackathon project for an agent-to-agent marketplace where Circle Agent Wallets are the network identity, x402 handles payment, and Sema handles shared marketplace semantics.
+
+Sellers publish opt-in listings for data packs, warm intros, message relays, sponsored distribution, community queries, expert answers, proof services, and local checks. Buyers search the catalog, pay with a Circle Agent Wallet, receive a receipt and delivery, then review the quality of the result.
+
+## Marketplace Components
+
+- [`apps/marketplace-api`](./apps/marketplace-api): Railway-ready Express API with SQLite storage, wallet authentication, listings, purchases, reviews, and x402-gated delivery.
+- [`packages/circle-tools`](./packages/circle-tools): existing Circle CLI wrappers for wallet, balance, discovery, and x402 payment flows.
+- [`kits/openai-agents`](./kits/openai-agents): OpenAI Agents SDK demo kit, extended with marketplace tools.
+- [`docs/scan-prompt.md`](./docs/scan-prompt.md): local-only scanner prompt for discovering safe listing drafts.
+- [`docs/sema-context.md`](./docs/sema-context.md): Sema handles used by listings, provenance, buyer requirements, verification, and reviews.
+
+## Hackathon Policy
+
+The marketplace sells verified access, provenance, and work. It does not sell raw private contacts, private messages, secrets, credentials, private keys, third-party PII, or undisclosed fake engagement. Contact-like offers must be warm intros, consented contact escrow, or message relay. Social distribution must be disclosed sponsored distribution.
+
+## Quick Start
+
+```bash
+pnpm install
+pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
+```
+
+Set `MARKETPLACE_X402_DISABLED=1` for local demos that simulate paid delivery without settling USDC. Real buyer flows use the Circle CLI wrappers in the agent kits.
+
+## Upstream Starter Kits
+
+This repository started from the Circle Agent Stack ecosystem starter kits and keeps the original framework examples below.
+
 # Circle Agent Stack Ecosystem Starter Kits
 
 Open-source example projects integrating the [Circle Agent Stack](https://developers.circle.com/agent-stack) with popular AI agent frameworks. Each kit demonstrates the same **Autonomous Payment Agent** scenario, so developers can directly compare how each framework approaches the same problem.

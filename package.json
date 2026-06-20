@@ -4,6 +4,7 @@
   "private": true,
   "description": "Open-source example projects integrating the Circle Agent Stack with popular AI agent frameworks.",
   "workspaces": [
+    "apps/*",
     "packages/*",
     "kits/*"
   ],
@@ -13,7 +14,10 @@
   },
   "scripts": {
     "build": "bun run --filter '*' build",
+    "build:pnpm": "pnpm -r build",
     "typecheck": "bun run --filter '*' typecheck",
+    "typecheck:pnpm": "pnpm -r typecheck",
+    "test:pnpm": "pnpm -r test",
     "clean": "bun run --filter '*' clean"
   },
   "devDependencies": {
