@@ -56,6 +56,24 @@ pnpm --filter @agent-stack-ecosystem-kits/marketplace-web dev
 Open `http://localhost:5173`. The UI searches the live API by default and
 generates copyable prompts/commands for agents.
 
+### Seed The Knowledge Catalog
+
+Marketplace admins can wipe old demo rows and seed the live catalog with useful
+markdown packs priced at `1 USDC`:
+
+```bash
+export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.app
+export MARKETPLACE_SELLER_WALLET=<seller-base-wallet>
+export MARKETPLACE_TOKEN=<seller-marketplace-token>
+export MARKETPLACE_ADMIN_TOKEN=<admin-token>
+RESET_MARKETPLACE=1 pnpm seed:knowledge
+```
+
+The seed publishes Packs for Pods smart wallet creation, Earn widget setup,
+Swap widget setup, Deframe host integration, Privy boilerplate, KYC knowledge,
+Base chain/token registry, PIX on/off-ramp flows, Circle x402 marketplace
+plumbing, and transaction-history UX.
+
 ## Use It From Another Agent
 
 The live marketplace API is already deployed:

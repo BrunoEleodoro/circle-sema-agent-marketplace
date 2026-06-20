@@ -18,6 +18,7 @@
     "typecheck": "bun run --filter '*' typecheck",
     "typecheck:pnpm": "pnpm -r typecheck",
     "test:pnpm": "pnpm -r test",
+    "seed:knowledge": "node scripts/seed-knowledge-listings.mjs",
     "clean": "bun run --filter '*' clean"
   },
   "devDependencies": {
