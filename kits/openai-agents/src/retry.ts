@@ -36,7 +36,7 @@ function retryAfterMs(error: unknown): number | undefined {
   }
   const msg = error instanceof Error ? error.message : '';
   const m = /try again in ([\d.]+)s/i.exec(msg);
-  if (m) return Math.ceil(parseFloat(m[1])) * 1_000;
+  if (m?.[1]) return Math.ceil(parseFloat(m[1])) * 1_000;
   if (e?.cause !== undefined) return retryAfterMs(e.cause);
   return undefined;
 }

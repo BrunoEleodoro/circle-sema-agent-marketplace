@@ -1,58 +1,36 @@
-# Railway Demo Notes
+# Railway Deployment
 
-These notes are for deploying a hackathon demo around the Circle + Sema Agent Marketplace artifacts in this repo.
+Deploy `apps/marketplace-api` as the web service.
 
-## Current Repo Shape
+## Service Settings
 
-The root package has build, typecheck, and clean scripts, but no long-running server script. A Railway service can install and validate the workspace today, but a public demo endpoint still needs an app entrypoint in a kit or a separate demo app.
-
-Use these files as the demo seed:
-
-- `sample-data/listings.json`: marketplace listings for `research-pack` and `warm-intro`.
-- `docs/sema-context.md`: shared Sema handle contract.
-- `docs/scan-prompt.md`: listing intake prompt.
-
-## Suggested Railway Setup
-
-Create one Railway project with separate services as needed:
-
-- `marketplace-demo-api`: the future API or web service that reads `sample-data/listings.json`.
-- `agent-worker`: optional background agent runner for probes and purchase flows.
-- `docs-static`: optional static docs service if the hackathon needs browsable docs.
-
-For the current repo root, use:
-
-```bash
-bun install
-bun run typecheck
-```
-
-Add a start command only after a demo app exists. Do not point Railway at the root package as a web service until there is a real `start` script.
+- Root directory: `apps/marketplace-api`
+- Install command: `pnpm install --frozen-lockfile`
+- Start command: `pnpm start`
+- Node version: `22` or newer
+- Volume mount: `/data`
 
 ## Environment Variables
 
-Recommended variables for the future demo service:
+Recommended variables:
 
 ```bash
 NODE_ENV=production
-BUN_VERSION=1.2.0
-MARKETPLACE_LISTINGS_PATH=sample-data/listings.json
-SEMA_CONTEXT_HANDLES=Card#6848,AcceptSpec#b77c,CiteBack#69ec,Probe#12d8,Judge#efe0
-CIRCLE_ENV=sandbox
-CIRCLE_DEMO_WALLET_ID=
-CIRCLE_DEMO_PAYMENT_ASSET=USDC
+MARKETPLACE_DB_PATH=/data/marketplace.sqlite
+MARKETPLACE_SESSION_SECRET=<random-secret>
+MARKETPLACE_X402_DISABLED=0
+CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com
+BASE_RPC_URL=<optional-base-rpc>
+SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
 ```
-
-If the demo service calls an LLM, set the provider key in Railway variables and keep it out of Git. If the Circle CLI is used interactively, persist its auth state in a Railway volume or replace it with a non-interactive sandbox flow.
 
 ## Smoke Checks
 
 Run these before the demo:
 
 ```bash
-bun install
-bun run typecheck
-jq . sample-data/listings.json
+pnpm --filter @agent-stack-ecosystem-kits/marketplace-api typecheck
+pnpm --filter @agent-stack-ecosystem-kits/marketplace-api test
 ```
 
 Then verify the deployed app can:
@@ -61,12 +39,11 @@ Then verify the deployed app can:
 - Display the five Sema handles.
 - Reject raw contact sales.
 - Reject undisclosed engagement.
-- Show USDC pricing as demo payment metadata without exposing wallet secrets.
+- Return HTTP 402 for unpaid delivery.
+- Store a receipt after paid delivery.
 
 ## Demo Risks
 
-- There is no root web server yet, so Railway deployment is not one-click public hosting until a startable app is added.
-- Circle CLI auth may not survive Railway restarts unless auth state is stored intentionally.
-- The policy exclusions are represented in docs and sample data, not enforced by runtime code yet.
+- Circle CLI auth should stay on the local buyer/seller machines. Railway only verifies signatures and serves the catalog.
 - Payment flows should stay in sandbox or use strict wallet spend caps during the hackathon.
 - Sema handle drift should be checked again if another agent updates the vocabulary before demo time.

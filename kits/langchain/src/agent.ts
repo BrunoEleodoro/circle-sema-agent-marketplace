@@ -45,8 +45,9 @@ function makeOnFailedAttempt() {
  * them without a pause. Keyed by tool name, matching `interruptOn` below.
  */
 const INTERRUPT_TOOLS = ['circle_pay_service', 'circle_gateway_deposit'] as const;
+type DeepAgent = ReturnType<typeof createDeepAgent>;
 
-export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string>) {
+export function buildAgent(config: KitConfig, ask: (q: string) => Promise<string>): DeepAgent {
   const tools = buildTools(ask);
   // maxRetries bounds the backoff so a sustained outage fails with a clear error
   // instead of hanging; onFailedAttempt makes each retry visible.
