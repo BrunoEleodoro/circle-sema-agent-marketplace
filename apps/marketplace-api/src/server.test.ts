@@ -25,6 +25,42 @@ test('server allows browser clients with cors headers', async (t) => {
   assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET,POST,OPTIONS');
 });
 
+test('server restricts cors to configured origins', async (t) => {
+  const previousCorsOrigin = process.env.MARKETPLACE_CORS_ORIGIN;
+  process.env.MARKETPLACE_CORS_ORIGIN = 'https://trusted.example,http://localhost:5173';
+  t.after(() => {
+    if (previousCorsOrigin === undefined) delete process.env.MARKETPLACE_CORS_ORIGIN;
+    else process.env.MARKETPLACE_CORS_ORIGIN = previousCorsOrigin;
+  });
+
+  const db = openDatabase(':memory:');
+  const server = createMarketplaceServer(db).listen(0);
+  t.after(() => server.close());
+  const { port } = server.address() as AddressInfo;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const allowed = await fetch(`${baseUrl}/api/listings/search`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'http://localhost:5173',
+      'access-control-request-method': 'GET',
+    },
+  });
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  assert.equal(allowed.headers.get('vary'), 'Origin');
+
+  const denied = await fetch(`${baseUrl}/api/listings/search`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'https://evil.example',
+      'access-control-request-method': 'GET',
+    },
+  });
+  assert.equal(denied.status, 403);
+  assert.equal(denied.headers.get('access-control-allow-origin'), null);
+});
+
 test('admin reset clears marketplace records', async (t) => {
   const previousAdminToken = process.env.MARKETPLACE_ADMIN_TOKEN;
   process.env.MARKETPLACE_ADMIN_TOKEN = 'test-admin-token';

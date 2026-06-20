@@ -31,14 +31,17 @@ function paymentRecipientFor(listing: { seller_wallet: string }): string {
 }
 
 function paymentRequired(res: Response, listing: { id: string; price_usd: number; seller_wallet: string }): void {
-  res.status(402).json({
+  const body: Record<string, unknown> = {
     error: 'Payment required.',
     listingId: listing.id,
     priceUsd: listing.price_usd,
     sellerWallet: listing.seller_wallet,
     paymentRecipientWallet: paymentRecipientFor(listing),
-    testPaymentHeader: 'x-test-paid-wallet',
-  });
+  };
+  if (testPaymentsEnabled()) {
+    body.testPaymentHeader = 'x-test-paid-wallet';
+  }
+  res.status(402).json(body);
 }
 
 function deliverPaidContent(

@@ -1,6 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+const DEV_SESSION_SECRET = 'marketplace-dev-secret';
+
 export const SEMA_HANDLES = [
   'Card#6848',
   'AcceptSpec#b77c',
@@ -22,7 +24,27 @@ export function databasePath(): string {
 }
 
 export function sessionSecret(): string {
-  return process.env.MARKETPLACE_SESSION_SECRET ?? 'marketplace-dev-secret';
+  const configured = process.env.MARKETPLACE_SESSION_SECRET?.trim();
+  if (configured) {
+    if (process.env.NODE_ENV === 'production' && configured.length < 32) {
+      throw new Error('MARKETPLACE_SESSION_SECRET must be at least 32 characters in production.');
+    }
+    return configured;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('MARKETPLACE_SESSION_SECRET must be set in production.');
+  }
+  return DEV_SESSION_SECRET;
+}
+
+export function marketplaceCorsOrigins(): { allowAll: boolean; origins: string[] } {
+  const raw = process.env.MARKETPLACE_CORS_ORIGIN ?? process.env.MARKETPLACE_CORS_ORIGINS ?? '*';
+  const origins = raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  if (origins.length === 0 || origins.includes('*')) return { allowAll: true, origins: [] };
+  return { allowAll: false, origins };
 }
 
 export function marketplaceTreasuryWallet(): string | null {

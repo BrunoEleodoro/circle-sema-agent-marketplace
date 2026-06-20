@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { createAuthChallenge, requireAuth, verifyAuthChallenge, type AuthedRequest } from './auth';
@@ -77,6 +78,13 @@ function routeParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
 }
 
+function tokenMatches(actual: string, expected: string): boolean {
+  if (!actual || !expected) return false;
+  const actualHash = createHash('sha256').update(actual).digest();
+  const expectedHash = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(actualHash, expectedHash);
+}
+
 function adminAuthorized(req: AuthedRequest): boolean {
   const expected = marketplaceAdminToken();
   if (!expected) return false;
@@ -84,7 +92,7 @@ function adminAuthorized(req: AuthedRequest): boolean {
     ? req.header('authorization')!.slice('Bearer '.length).trim()
     : '';
   const header = req.header('x-marketplace-admin-token') ?? '';
-  return bearer === expected || header === expected;
+  return tokenMatches(bearer, expected) || tokenMatches(header, expected);
 }
 
 export function createApiRouter(db: MarketplaceDb): Router {

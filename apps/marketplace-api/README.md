@@ -9,6 +9,10 @@ cp apps/marketplace-api/.env.example apps/marketplace-api/.env
 pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
 ```
 
+For production, set a unique `MARKETPLACE_SESSION_SECRET` of at least 32
+characters and replace `MARKETPLACE_CORS_ORIGIN=*` with a comma-separated
+allowlist of trusted web origins.
+
 The default local configuration uses real Circle Gateway x402 delivery with `MARKETPLACE_X402_DISABLED=0`.
 
 ## Endpoints
