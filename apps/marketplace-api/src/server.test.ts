@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { AddressInfo } from 'node:net';
 import test from 'node:test';
-import { openDatabase } from './db';
+import { createListing, openDatabase } from './db';
 import { createMarketplaceServer } from './server';
 
 test('server allows browser clients with cors headers', async (t) => {
@@ -23,4 +23,60 @@ test('server allows browser clients with cors headers', async (t) => {
   });
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET,POST,OPTIONS');
+});
+
+test('admin reset clears marketplace records', async (t) => {
+  const previousAdminToken = process.env.MARKETPLACE_ADMIN_TOKEN;
+  process.env.MARKETPLACE_ADMIN_TOKEN = 'test-admin-token';
+  t.after(() => {
+    if (previousAdminToken === undefined) delete process.env.MARKETPLACE_ADMIN_TOKEN;
+    else process.env.MARKETPLACE_ADMIN_TOKEN = previousAdminToken;
+  });
+
+  const db = openDatabase(':memory:');
+  createListing(db, {
+    sellerWallet: '0x0000000000000000000000000000000000000001',
+    listingType: 'data_pack',
+    title: 'Temporary listing',
+    description: 'A listing that should be removed by the admin reset endpoint.',
+    priceUsd: 1,
+    deliveryMode: 'markdown',
+    proofSummary: 'Reset endpoint test listing.',
+    riskLevel: 'low',
+    policyFlags: [],
+    deliverable: {
+      payload: '# Temporary',
+      mimeType: 'text/markdown',
+    },
+  });
+
+  const server = createMarketplaceServer(db).listen(0);
+  t.after(() => server.close());
+  const { port } = server.address() as AddressInfo;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const unauthorized = await fetch(`${baseUrl}/api/admin/reset-marketplace`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ confirm: 'reset-marketplace-data' }),
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const reset = await fetch(`${baseUrl}/api/admin/reset-marketplace`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-marketplace-admin-token': 'test-admin-token',
+    },
+    body: JSON.stringify({ confirm: 'reset-marketplace-data' }),
+  });
+  assert.equal(reset.status, 200);
+  const body = (await reset.json()) as { deleted?: { listings?: number; deliverables?: number } };
+  assert.equal(body.deleted?.listings, 1);
+  assert.equal(body.deleted?.deliverables, 1);
+
+  const search = await fetch(`${baseUrl}/api/listings/search`);
+  assert.equal(search.status, 200);
+  const searchBody = (await search.json()) as { listings?: unknown[] };
+  assert.deepEqual(searchBody.listings, []);
 });

@@ -409,6 +409,32 @@ export function listPendingPayouts(db: MarketplaceDb): PurchaseRecord[] {
     .all() as PurchaseRecord[];
 }
 
+function tableCount(db: MarketplaceDb, table: string): number {
+  const row = db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number };
+  return row.count;
+}
+
+export function resetMarketplaceData(db: MarketplaceDb): Record<string, number> {
+  const deleted = {
+    reviews: tableCount(db, 'reviews'),
+    purchaseDeliverables: tableCount(db, 'purchase_deliverables'),
+    purchases: tableCount(db, 'purchases'),
+    deliverables: tableCount(db, 'deliverables'),
+    listings: tableCount(db, 'listings'),
+  };
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM reviews').run();
+    db.prepare('DELETE FROM purchase_deliverables').run();
+    db.prepare('DELETE FROM purchases').run();
+    db.prepare('DELETE FROM deliverables').run();
+    db.prepare('DELETE FROM listings').run();
+    db.prepare('UPDATE agents SET reputation_score = 0, review_count = 0, updated_at = ?').run(nowMs());
+  })();
+
+  return deleted;
+}
+
 export function fulfillPurchase(
   db: MarketplaceDb,
   sellerWallet: string,

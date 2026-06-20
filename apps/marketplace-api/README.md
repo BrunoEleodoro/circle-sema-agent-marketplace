@@ -24,6 +24,7 @@ The default local configuration uses real Circle Gateway x402 delivery with `MAR
 - `GET /api/purchases/:id`
 - `GET /api/purchases/:id/deliverable`
 - `POST /api/purchases/:id/fulfill`
+- `POST /api/admin/reset-marketplace`
 - `GET /api/payouts/pending`
 - `POST /api/payouts/:purchaseId/mark-paid`
 - `POST /api/reviews`

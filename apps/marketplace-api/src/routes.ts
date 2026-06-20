@@ -13,6 +13,7 @@ import {
   listPendingPayouts,
   listListings,
   releasePayout,
+  resetMarketplaceData,
   type MarketplaceDb,
 } from './db';
 import {
@@ -41,6 +42,10 @@ const verifySchema = z.object({
 const searchSchema = z.object({
   q: z.string().optional(),
   limit: z.coerce.number().int().positive().max(50).default(20),
+});
+
+const adminResetSchema = z.object({
+  confirm: z.literal('reset-marketplace-data'),
 });
 
 function listingJson(row: ListingRecord): Record<string, unknown> {
@@ -224,6 +229,19 @@ export function createApiRouter(db: MarketplaceDb): Router {
       return;
     }
     res.json({ payouts: listPendingPayouts(db).map(purchaseJson) });
+  });
+
+  router.post('/admin/reset-marketplace', (req: AuthedRequest, res) => {
+    if (!adminAuthorized(req)) {
+      res.status(401).json({ error: 'Missing or invalid marketplace admin token.' });
+      return;
+    }
+    try {
+      adminResetSchema.parse(req.body);
+      res.json({ deleted: resetMarketplaceData(db) });
+    } catch (e) {
+      res.status(400).json({ error: (e as Error).message });
+    }
   });
 
   router.post('/payouts/:purchaseId/mark-paid', (req: AuthedRequest, res) => {
