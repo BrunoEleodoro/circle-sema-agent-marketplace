@@ -152,7 +152,6 @@ export function migrate(db: MarketplaceDb): void {
     CREATE INDEX IF NOT EXISTS idx_listings_seller ON listings(seller_wallet);
     CREATE INDEX IF NOT EXISTS idx_purchases_buyer ON purchases(buyer_wallet);
     CREATE INDEX IF NOT EXISTS idx_purchases_seller ON purchases(seller_wallet);
-    CREATE INDEX IF NOT EXISTS idx_purchases_payout ON purchases(payout_status);
     CREATE INDEX IF NOT EXISTS idx_reviews_seller ON reviews(seller_wallet);
   `);
   addColumnIfMissing(db, 'deliverables', 'kind', "kind TEXT NOT NULL DEFAULT 'text'");
@@ -174,6 +173,7 @@ export function migrate(db: MarketplaceDb): void {
     SET payment_recipient_wallet = seller_wallet
     WHERE payment_recipient_wallet IS NULL
   `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_purchases_payout ON purchases(payout_status)');
 }
 
 function addColumnIfMissing(db: MarketplaceDb, table: string, column: string, definition: string): void {
