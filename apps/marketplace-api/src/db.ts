@@ -2,7 +2,14 @@ import { createHash, randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { databasePath, nowMs } from './config';
 import { assertListingPolicy } from './policy';
-import { createListingSchema, type CreateListingInput, type ListingRecord, type PurchaseRecord } from './schema';
+import {
+  createListingSchema,
+  reviewSchema,
+  type CreateListingInput,
+  type ListingRecord,
+  type PurchaseRecord,
+  type ReviewInput,
+} from './schema';
 
 export type MarketplaceDb = Database.Database;
 
@@ -214,6 +221,12 @@ export function getDeliverable(db: MarketplaceDb, listingId: string): { payload:
   ) ?? null;
 }
 
+export function getPurchase(db: MarketplaceDb, purchaseId: string): PurchaseRecord | null {
+  return (
+    db.prepare('SELECT * FROM purchases WHERE id = ?').get(purchaseId) as PurchaseRecord | undefined
+  ) ?? null;
+}
+
 export function recordPurchase(
   db: MarketplaceDb,
   input: {
@@ -256,6 +269,47 @@ export function hasPurchase(db: MarketplaceDb, listingId: string, buyerWallet: s
   return Boolean(row);
 }
 
+export function createReview(
+  db: MarketplaceDb,
+  buyerWallet: string,
+  input: ReviewInput,
+): { id: string; listingId: string; sellerWallet: string; score: number; matchesDescription: boolean; text: string } {
+  const parsed = reviewSchema.parse(input);
+  const purchase = getPurchase(db, parsed.purchaseId);
+  if (!purchase) throw new Error('Purchase not found.');
+  if (purchase.buyer_wallet !== buyerWallet.toLowerCase()) {
+    throw new Error('Only the buyer wallet that completed the purchase can review it.');
+  }
+
+  const id = randomUUID();
+  db.prepare(`
+    INSERT INTO reviews (
+      id, purchase_id, listing_id, buyer_wallet, seller_wallet, score,
+      matches_description, text, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    parsed.purchaseId,
+    purchase.listing_id,
+    purchase.buyer_wallet,
+    purchase.seller_wallet,
+    parsed.score,
+    parsed.matchesDescription ? 1 : 0,
+    parsed.text,
+    nowMs(),
+  );
+
+  recalculateReputation(db, purchase.seller_wallet);
+  return {
+    id,
+    listingId: purchase.listing_id,
+    sellerWallet: purchase.seller_wallet,
+    score: parsed.score,
+    matchesDescription: parsed.matchesDescription,
+    text: parsed.text,
+  };
+}
+
 export function recalculateReputation(db: MarketplaceDb, sellerWallet: string): void {
   const row = db
     .prepare('SELECT AVG(score) AS avg_score, COUNT(*) AS count FROM reviews WHERE seller_wallet = ?')
@@ -266,5 +320,19 @@ export function recalculateReputation(db: MarketplaceDb, sellerWallet: string): 
     nowMs(),
     sellerWallet.toLowerCase(),
   );
+}
+
+export function getReputation(
+  db: MarketplaceDb,
+  sellerWallet: string,
+): { walletAddress: string; reputationScore: number; reviewCount: number } {
+  const row = db.prepare('SELECT wallet_address, reputation_score, review_count FROM agents WHERE wallet_address = ?').get(
+    sellerWallet.toLowerCase(),
+  ) as { wallet_address: string; reputation_score: number; review_count: number } | undefined;
+  return {
+    walletAddress: sellerWallet.toLowerCase(),
+    reputationScore: row?.reputation_score ?? 0,
+    reviewCount: row?.review_count ?? 0,
+  };
 }
 
