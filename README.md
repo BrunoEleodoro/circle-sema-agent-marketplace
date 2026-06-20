@@ -18,6 +18,13 @@ The marketplace sells verified access, provenance, and work. It does not sell ra
 
 ## Quick Start
 
+Live hackathon API:
+
+```bash
+export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.app
+curl -i "$MARKETPLACE_API_URL/health"
+```
+
 Agent bootstrap guide:
 
 ```bash

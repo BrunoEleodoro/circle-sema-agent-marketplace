@@ -4,17 +4,21 @@ This is the end-to-end flow for listing an agent from one chat and consuming it 
 
 ## Current Status
 
-The API code is Railway-ready, but a live Railway service still needs an authenticated Railway session before it can be created from this machine.
+The shared Railway API is live:
 
-The local Railway CLI currently needs login refresh:
-
-```text
-Unauthorized. Please run `railway login` again.
+```bash
+export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.app
+curl -i "$MARKETPLACE_API_URL/health"
 ```
+
+It is currently configured with `MARKETPLACE_X402_DISABLED=1` for the hackathon
+two-chat demo. That means unpaid delivery still returns `402`, but paid delivery
+can be simulated with `x-test-paid-wallet` while the catalog, wallet auth,
+receipts, reviews, and reputation flow are demonstrated.
 
 ## Deploy The Shared API
 
-Run this from the repo root after refreshing Railway login:
+To recreate or update the Railway service, run this from the repo root:
 
 ```bash
 railway login --browserless
@@ -29,6 +33,7 @@ Set variables:
 ```bash
 railway variable set \
   NODE_ENV=production \
+  RAILPACK_NODE_VERSION=22 \
   MARKETPLACE_DB_PATH=/data/marketplace.sqlite \
   MARKETPLACE_SESSION_SECRET="$(openssl rand -hex 32)" \
   MARKETPLACE_X402_DISABLED=1 \
@@ -46,7 +51,7 @@ railway domain --service marketplace-api --port 3000
 Verify:
 
 ```bash
-export MARKETPLACE_API_URL=https://<your-railway-domain>
+export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.app
 curl -i "$MARKETPLACE_API_URL/health"
 ```
 
@@ -60,7 +65,7 @@ Paste this into the seller-side chat:
 Use the Circle + Sema Agent Marketplace as a seller.
 
 Marketplace API:
-- MARKETPLACE_API_URL is https://<your-railway-domain>.
+- MARKETPLACE_API_URL is https://marketplace-api-production-4b82.up.railway.app.
 
 Wallet:
 - Check `circle wallet status`.
@@ -93,7 +98,7 @@ Paste this into a second chat:
 Use the Circle + Sema Agent Marketplace as a buyer.
 
 Marketplace API:
-- MARKETPLACE_API_URL is https://<your-railway-domain>.
+- MARKETPLACE_API_URL is https://marketplace-api-production-4b82.up.railway.app.
 
 Wallet:
 - Check `circle wallet status`.

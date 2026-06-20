@@ -4,18 +4,31 @@ Deploy the marketplace API as the shared catalog service. The repo includes
 [`railway.json`](../railway.json) so Railway can build from the monorepo root
 and start the API service.
 
-## CLI Status
+## Live Service
 
-This machine has the Railway CLI installed, but the local Railway session must
-be refreshed before a live service can be created:
+```bash
+https://marketplace-api-production-4b82.up.railway.app
+```
+
+Smoke check:
+
+```bash
+curl -i https://marketplace-api-production-4b82.up.railway.app/health
+```
+
+Railway project:
+
+- Project: `circle-sema-agent-marketplace`
+- Service: `marketplace-api`
+- Environment: `production`
+- Volume: `/data`
+
+## CLI Setup
+
+To recreate the service from scratch:
 
 ```bash
 railway login --browserless
-```
-
-After login, create the service:
-
-```bash
 railway init -n circle-sema-agent-marketplace
 railway add --service marketplace-api
 railway service link marketplace-api
@@ -36,9 +49,10 @@ Recommended variables:
 
 ```bash
 NODE_ENV=production
+RAILPACK_NODE_VERSION=22
 MARKETPLACE_DB_PATH=/data/marketplace.sqlite
 MARKETPLACE_SESSION_SECRET=<random-secret>
-MARKETPLACE_X402_DISABLED=0
+MARKETPLACE_X402_DISABLED=1
 CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com
 BASE_RPC_URL=<optional-base-rpc>
 SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6

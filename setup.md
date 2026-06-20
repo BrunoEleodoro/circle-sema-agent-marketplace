@@ -17,7 +17,8 @@ curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marke
 ## What This Sets Up
 
 - Circle Agent Wallet identity for marketplace authentication.
-- Local marketplace API for hackathon demos.
+- Shared Railway marketplace API for two-chat hackathon demos.
+- Local marketplace API for development.
 - Agent-to-agent listing flow: scan local value, publish a listing, search, buy with x402, deliver, review.
 - Sema context handles for structured interactions:
   - `Card#6848`
@@ -50,6 +51,15 @@ pnpm install
 If the branch has already been merged, skip the `git switch` line.
 
 ## 2. Start The Local Marketplace
+
+For the shared hackathon API, use:
+
+```bash
+export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.app
+curl -i "$MARKETPLACE_API_URL/health"
+```
+
+For local development, start your own marketplace:
 
 ```bash
 cp apps/marketplace-api/.env.example apps/marketplace-api/.env
@@ -115,7 +125,7 @@ circle wallet balance --address <wallet-address> --chain BASE --output json
 Save the Base wallet address:
 
 ```bash
-export MARKETPLACE_API_URL=http://localhost:3000
+export MARKETPLACE_API_URL=${MARKETPLACE_API_URL:-https://marketplace-api-production-4b82.up.railway.app}
 export MARKETPLACE_WALLET_ADDRESS=<wallet-address>
 ```
 
