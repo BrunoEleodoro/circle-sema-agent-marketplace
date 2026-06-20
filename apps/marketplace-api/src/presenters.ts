@@ -1,6 +1,17 @@
 import type { DeliverableRecord, PurchaseRecord } from './schema';
 
-const BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const usdcByChain = {
+  BASE: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  MATIC: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
+} as const;
+
+function payoutChainFor(network: string): keyof typeof usdcByChain {
+  const normalized = network.toLowerCase();
+  if (normalized.includes('137') || normalized.includes('polygon') || normalized.includes('matic')) {
+    return 'MATIC';
+  }
+  return 'BASE';
+}
 
 export function deliverableJson(deliverable: DeliverableRecord): Record<string, unknown> {
   return {
@@ -56,13 +67,14 @@ export function suggestedPayoutCommand(purchase: PurchaseRecord): string | null 
   if (purchase.payout_status !== 'pending_release' || !purchase.payment_recipient_wallet) {
     return null;
   }
+  const chain = payoutChainFor(purchase.network);
   return [
     'circle wallet transfer',
     purchase.seller_wallet,
     `--amount ${purchase.amount_usd}`,
-    `--token ${BASE_USDC_ADDRESS}`,
+    `--token ${usdcByChain[chain]}`,
     `--address ${purchase.payment_recipient_wallet}`,
-    '--chain BASE',
+    `--chain ${chain}`,
     '--output json',
   ].join(' ');
 }
