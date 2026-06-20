@@ -35,6 +35,10 @@ export function marketplaceAdminToken(): string | null {
   return raw || null;
 }
 
+export function marketplacePayoutChain(): 'BASE' | 'MATIC' {
+  return process.env.MARKETPLACE_PAYOUT_CHAIN?.trim().toUpperCase() === 'MATIC' ? 'MATIC' : 'BASE';
+}
+
 export function nowMs(): number {
   return Date.now();
 }

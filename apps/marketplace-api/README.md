@@ -54,7 +54,7 @@ circle services pay http://localhost:3000/api/deliver/<listing-id> \
 
 Delivery uses Circle Gateway x402 middleware. Include the buyer marketplace bearer token as an `Authorization` header during payment if the buyer will submit a review.
 
-Set `MARKETPLACE_TREASURY_WALLET=0x...` to make x402 charge the marketplace/platform wallet first. The purchase still records the listing seller as the economic seller. After the seller fulfills delivery, `GET /api/payouts/pending` returns the pending seller payout and a suggested Circle CLI transfer command. `POST /api/payouts/:purchaseId/mark-paid` records the completed seller transfer.
+Set `MARKETPLACE_TREASURY_WALLET=0x...` to make x402 charge the marketplace/platform wallet first. The purchase still records the listing seller as the economic seller. After the seller fulfills delivery, `GET /api/payouts/pending` returns the pending seller payout and a suggested Circle CLI transfer command using `MARKETPLACE_PAYOUT_CHAIN` (`BASE` by default). Keep the treasury wallet funded with transferable USDC on that payout chain. `POST /api/payouts/:purchaseId/mark-paid` records the completed seller transfer.
 
 After checkout succeeds, the response includes a `deliverable` object:
 
