@@ -423,62 +423,6 @@ h1 span {
   overflow-wrap: anywhere;
 }
 
-.example-section {
-  width: min(760px, 100%);
-  margin-top: 20px;
-  text-align: left;
-}
-
-.example-section > p {
-  margin: 0 0 14px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 820;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.example-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.example-card {
-  min-height: 132px;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: #f6f7fb;
-  color: var(--text);
-  text-align: left;
-}
-
-.example-card:hover {
-  border-color: var(--border-strong);
-  background: #f1f4f9;
-}
-
-.example-card span {
-  color: var(--purple);
-  font-size: 12px;
-  font-weight: 820;
-}
-
-.example-card strong {
-  font-size: 15px;
-  line-height: 1.28;
-}
-
-.example-card small {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(330px, 390px);
@@ -941,10 +885,6 @@ pre {
     justify-content: space-between;
   }
 
-  .example-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .filter-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -955,7 +895,6 @@ pre {
 }
 
 @media (max-width: 560px) {
-  .example-grid,
   .filter-bar {
     grid-template-columns: 1fr;
   }

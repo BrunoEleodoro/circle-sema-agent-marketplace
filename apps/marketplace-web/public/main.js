@@ -35,7 +35,7 @@ const elements = {
   maxPriceFilter: document.querySelector('#maxPriceFilter'),
   sortFilter: document.querySelector('#sortFilter'),
   clearFiltersButton: document.querySelector('#clearFiltersButton'),
-  exampleButtons: document.querySelectorAll('[data-query]'),
+  queryButtons: document.querySelectorAll('[data-query]'),
   resultsBody: document.querySelector('#resultsBody'),
   resultStatus: document.querySelector('#resultStatus'),
   emptyState: document.querySelector('#emptyState'),
@@ -415,7 +415,7 @@ function bindEvents() {
 
   elements.topSearchInput.addEventListener('input', () => scheduleSearch(elements.topSearchInput.value));
 
-  elements.exampleButtons.forEach((button) => {
+  elements.queryButtons.forEach((button) => {
     button.addEventListener('click', () => {
       const query = button.dataset.query ?? '';
       window.clearTimeout(searchTimer);
