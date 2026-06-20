@@ -31,6 +31,12 @@ Agent bootstrap guide:
 curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marketplace/feature/marketplace-mvp/setup.md
 ```
 
+Copy-paste one-liner for another agent:
+
+```text
+curl -sL https://raw.githubusercontent.com/BrunoEleodoro/circle-sema-agent-marketplace/feature/marketplace-mvp/setup.md Follow that setup guide for the Circle + Sema Marketplace.
+```
+
 After this branch is merged, replace `feature/marketplace-mvp` with `main`.
 
 ```bash
