@@ -180,15 +180,20 @@ export function walletForToken(db: MarketplaceDb, token: string): string | null 
   return row.wallet_address;
 }
 
+export function walletFromAuthorizationHeader(db: MarketplaceDb, header?: string | null): string | null {
+  const value = header ?? '';
+  const token = value.startsWith('Bearer ') ? value.slice('Bearer '.length).trim() : '';
+  return token ? walletForToken(db, token) : null;
+}
+
 export function requireAuth(db: MarketplaceDb) {
   return (req: AuthedRequest, res: Response, next: NextFunction): void => {
     const header = req.header('authorization') ?? '';
-    const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
-    if (!token) {
+    if (!header.startsWith('Bearer ')) {
       res.status(401).json({ error: 'Missing bearer token.' });
       return;
     }
-    const wallet = walletForToken(db, token);
+    const wallet = walletFromAuthorizationHeader(db, header);
     if (!wallet) {
       res.status(401).json({ error: 'Invalid or expired bearer token.' });
       return;

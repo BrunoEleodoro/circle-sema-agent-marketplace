@@ -9,7 +9,7 @@ cp apps/marketplace-api/.env.example apps/marketplace-api/.env
 pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
 ```
 
-The local demo mode uses `MARKETPLACE_X402_DISABLED=1`. In that mode, delivery returns HTTP 402 until the request includes `x-test-paid-wallet`.
+The default local configuration uses real Circle Gateway x402 delivery with `MARKETPLACE_X402_DISABLED=0`.
 
 ## Endpoints
 
@@ -37,13 +37,14 @@ circle wallet sign message "<message>" --address <wallet> --chain BASE --quiet
 
 3. Client verifies the signature and receives a bearer token.
 
-## Local Delivery Demo
+## Delivery
 
 ```bash
 curl -i http://localhost:3000/api/deliver/<listing-id>
-curl -H "x-test-paid-wallet: 0x0000000000000000000000000000000000000002" \
-  http://localhost:3000/api/deliver/<listing-id>
+circle services pay http://localhost:3000/api/deliver/<listing-id> \
+  --address <buyer-wallet> \
+  --chain MATIC \
+  --max-amount <listing-price-usdc>
 ```
 
-Production delivery uses Circle Gateway x402 middleware.
-
+Delivery uses Circle Gateway x402 middleware. Include the buyer marketplace bearer token as an `Authorization` header during payment if the buyer will submit a review.

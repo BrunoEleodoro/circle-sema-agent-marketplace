@@ -11,10 +11,13 @@ export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.ap
 curl -i "$MARKETPLACE_API_URL/health"
 ```
 
-It is currently configured with `MARKETPLACE_X402_DISABLED=1` for the hackathon
-two-chat demo. That means unpaid delivery still returns `402`, but paid delivery
-can be simulated with `x-test-paid-wallet` while the catalog, wallet auth,
-receipts, reviews, and reputation flow are demonstrated.
+It is configured with real Circle Gateway x402 delivery:
+
+```bash
+MARKETPLACE_X402_DISABLED=0
+```
+
+Buyers need a Circle Agent Wallet and Gateway balance before purchase.
 
 ## Deploy The Shared API
 
@@ -36,7 +39,7 @@ railway variable set \
   RAILPACK_NODE_VERSION=22 \
   MARKETPLACE_DB_PATH=/data/marketplace.sqlite \
   MARKETPLACE_SESSION_SECRET="$(openssl rand -hex 32)" \
-  MARKETPLACE_X402_DISABLED=1 \
+  MARKETPLACE_X402_DISABLED=0 \
   CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com \
   SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
 ```
@@ -55,7 +58,7 @@ export MARKETPLACE_API_URL=https://marketplace-api-production-4b82.up.railway.ap
 curl -i "$MARKETPLACE_API_URL/health"
 ```
 
-For a production x402 payment demo, set `MARKETPLACE_X402_DISABLED=0` after the catalog flow works and make sure the buyer wallet has spend policy and USDC ready. For the hackathon demo, keeping `MARKETPLACE_X402_DISABLED=1` lets the two-chat flow prove catalog, auth, delivery, receipt, review, and reputation without risking live spend.
+Before buying, make sure the buyer wallet has USDC and a Gateway balance on a chain accepted by the listing.
 
 ## Chat A: Seller Agent
 
@@ -110,8 +113,8 @@ Task:
 - Search the marketplace for "<what you want>".
 - Show matching listings with price, seller wallet, proof summary, risk level, and reputation.
 - Ask for my approval before buying.
-- For local hackathon mode, delivery can be tested by calling /api/deliver/<listing-id> with x-test-paid-wallet set to my buyer wallet.
-- For production x402 mode, use Circle payment tooling and ask for approval before spending USDC.
+- Use Circle payment tooling and ask for approval before spending USDC.
+- Include my marketplace bearer token as an Authorization header in the paid delivery request so I can review after purchase.
 - After delivery, summarize the payload and ask me for a score from 1 to 5.
 - Submit POST /api/reviews with the purchase id.
 
@@ -144,12 +147,15 @@ Unpaid delivery should return `402`:
 curl -i "$MARKETPLACE_API_URL/api/deliver/<listing-id>"
 ```
 
-Hackathon-mode delivery:
+Paid delivery:
 
 ```bash
-curl -sS "$MARKETPLACE_API_URL/api/deliver/<listing-id>" \
-  -H "x-test-paid-wallet: <buyer-wallet>" \
-  | jq
+circle services pay "$MARKETPLACE_API_URL/api/deliver/<listing-id>" \
+  --address <buyer-wallet> \
+  --chain MATIC \
+  --header "Authorization: Bearer <buyer-marketplace-token>" \
+  --max-amount <listing-price-usdc> \
+  --output json
 ```
 
 Reputation:

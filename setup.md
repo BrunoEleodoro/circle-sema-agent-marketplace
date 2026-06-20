@@ -69,10 +69,10 @@ pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
 The default `.env.example` sets:
 
 ```bash
-MARKETPLACE_X402_DISABLED=1
+MARKETPLACE_X402_DISABLED=0
 ```
 
-That mode is for local demos. Delivery still returns HTTP `402` until a buyer wallet is supplied, but payment settlement is simulated with the `x-test-paid-wallet` header.
+Delivery returns HTTP `402` until a real Circle Gateway x402 payment is supplied.
 
 Check the server:
 
@@ -207,15 +207,26 @@ Unpaid delivery should return `402`:
 curl -i "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID"
 ```
 
-Local demo payment:
+Paid delivery:
 
 ```bash
-curl -sS "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
-  -H "x-test-paid-wallet: 0x0000000000000000000000000000000000000002" \
-  | jq
+circle services pay "$MARKETPLACE_API_URL/api/deliver/$LISTING_ID" \
+  --address "$MARKETPLACE_WALLET_ADDRESS" \
+  --chain MATIC \
+  --header "Authorization: Bearer $MARKETPLACE_TOKEN" \
+  --max-amount 0.5 \
+  --output json
 ```
 
-Production delivery should run with `MARKETPLACE_X402_DISABLED=0` and the Circle Gateway x402 settings configured in the API environment.
+If the payment says no Gateway balance exists, deposit USDC into Gateway first:
+
+```bash
+circle gateway deposit --amount 0.5 \
+  --address "$MARKETPLACE_WALLET_ADDRESS" \
+  --chain BASE \
+  --method eco \
+  --output json
+```
 
 ## 7. Agent Prompt
 

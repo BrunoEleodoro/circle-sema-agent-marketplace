@@ -238,8 +238,9 @@ export const buyListingTool = tool({
   parameters: z.object({
     listingId: z.string().describe('Marketplace listing id.'),
     address: z.string().describe('Buyer Circle agent wallet address.'),
+    authToken: z.string().optional().describe('Marketplace bearer token returned by market_auth. Enables review after x402 delivery.'),
   }),
-  execute: async ({ listingId, address }) => {
+  execute: async ({ listingId, address, authToken }) => {
     const url = endpoint(`/api/deliver/${listingId}`);
     const method = 'GET';
     log(`buy_listing url=${url} from=${address}`);
@@ -248,7 +249,14 @@ export const buyListingTool = tool({
     const deployed = await ensureDeployed(address, picked.chain, log);
     if (!deployed.ok) throw new Error(deployed.message);
 
-    const result = await payService({ url, address, data: {}, method, chain: picked.chain });
+    const result = await payService({
+      url,
+      address,
+      data: {},
+      method,
+      chain: picked.chain,
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+    });
     const tx = result.txHash ? ` txHash=${result.txHash}` : '';
     log(`buy_listing ← paid on ${chainLabel(picked.chain)}${tx}`);
     return JSON.stringify(result);
@@ -276,4 +284,3 @@ export const reviewListingTool = tool({
     return JSON.stringify(result);
   },
 });
-

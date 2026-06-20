@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createGatewayMiddleware } from '@circle-fin/x402-batching/server';
+import { walletFromAuthorizationHeader } from './auth';
 import { getDeliverable, getListing, recordPurchase, type MarketplaceDb } from './db';
 
 interface PaidRequest extends Request {
@@ -40,6 +41,7 @@ function deliverPaidContent(
   paymentReceipt: string,
   network: string,
   transactionHash?: string,
+  paymentPayer?: string,
 ): void {
   const deliverable = getDeliverable(db, listing.id);
   if (!deliverable) {
@@ -65,6 +67,7 @@ function deliverPaidContent(
     payload: deliverable.payload,
     receipt: {
       buyerWallet,
+      paymentPayer,
       sellerWallet: listing.seller_wallet,
       amountUsd: listing.price_usd,
       network,
@@ -93,12 +96,13 @@ export function deliverListing(db: MarketplaceDb) {
     }
 
     if (testPaymentsEnabled()) {
-      const buyerWallet = req.header('x-test-paid-wallet');
-      if (!buyerWallet) {
+      const paymentPayer = req.header('x-test-paid-wallet');
+      const buyerWallet = walletFromAuthorizationHeader(db, req.header('authorization')) ?? paymentPayer;
+      if (!buyerWallet || !paymentPayer) {
         paymentRequired(res, listing);
         return;
       }
-      deliverPaidContent(db, req, res, listing, buyerWallet, 'test-payment-receipt', 'testnet');
+      deliverPaidContent(db, req, res, listing, buyerWallet, 'test-payment-receipt', 'testnet', undefined, paymentPayer);
       return;
     }
 
@@ -115,10 +119,11 @@ export function deliverListing(db: MarketplaceDb) {
         req,
         res,
         listing,
-        payment.payer,
+        walletFromAuthorizationHeader(db, req.header('authorization')) ?? payment.payer,
         payment.receipt ?? JSON.stringify(payment),
         payment.network ?? 'unknown',
         payment.transaction,
+        payment.payer,
       );
     });
   };

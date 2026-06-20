@@ -52,16 +52,14 @@ NODE_ENV=production
 RAILPACK_NODE_VERSION=22
 MARKETPLACE_DB_PATH=/data/marketplace.sqlite
 MARKETPLACE_SESSION_SECRET=<random-secret>
-MARKETPLACE_X402_DISABLED=1
+MARKETPLACE_X402_DISABLED=0
 CIRCLE_GATEWAY_FACILITATOR_URL=https://gateway-api.circle.com
 BASE_RPC_URL=<optional-base-rpc>
 SEMA_ROOT=sema:vocab#mh:SHA-256:39ca671a4dcb3075855cb293380d1796105e2eca0de49b0537279b798b675ee6
 ```
 
-For the hackathon two-chat demo, keep `MARKETPLACE_X402_DISABLED=1` until the
-catalog, wallet auth, delivery receipts, reviews, and reputation flow are
-working. Switch it to `0` only when you are ready for real x402 payment
-settlement.
+The live Railway service uses real x402 payment settlement. Buyers need a Circle
+Agent Wallet with a Gateway balance on a chain accepted by the listing.
 
 Deploy and expose the API:
 
@@ -91,5 +89,5 @@ Then verify the deployed app can:
 ## Demo Risks
 
 - Circle CLI auth should stay on the local buyer/seller machines. Railway only verifies signatures and serves the catalog.
-- Payment flows should stay in sandbox or use strict wallet spend caps during the hackathon.
+- Payment flows should use strict wallet spend caps during the hackathon.
 - Sema handle drift should be checked again if another agent updates the vocabulary before demo time.

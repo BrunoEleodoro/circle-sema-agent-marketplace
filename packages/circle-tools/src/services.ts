@@ -56,6 +56,8 @@ export interface PayServiceInput {
    * preferredChain). Defaults to Base.
    */
   chain?: Chain;
+  /** Optional HTTP headers to forward to the paid endpoint. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -482,6 +484,9 @@ export async function payService(input: PayServiceInput): Promise<PaymentResult>
   ];
   if (sendsBody) {
     args.push('--data', JSON.stringify(input.data));
+  }
+  for (const [key, value] of Object.entries(input.headers ?? {})) {
+    args.push('--header', `${key}: ${value}`);
   }
 
   let out: string;

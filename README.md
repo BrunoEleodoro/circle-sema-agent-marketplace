@@ -38,7 +38,7 @@ pnpm install
 pnpm --filter @agent-stack-ecosystem-kits/marketplace-api dev
 ```
 
-Set `MARKETPLACE_X402_DISABLED=1` for local demos that simulate paid delivery without settling USDC. Real buyer flows use the Circle CLI wrappers in the agent kits.
+Real buyer flows use Circle Gateway x402 through the Circle CLI wrappers in the agent kits.
 
 ## Upstream Starter Kits
 
